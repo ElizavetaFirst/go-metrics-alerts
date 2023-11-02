@@ -11,7 +11,7 @@ const (
 
 type Metric struct {
 	Type  MetricType
-	Value float64
+	Value any
 }
 
 type Storage interface {
@@ -39,11 +39,22 @@ func (ms *MemStorage) Update(metricName string, update Metric) error {
 	if metric.Type != update.Type {
 		return nil
 	}
-	if metric.Type == Counter {
-		ms.Data[metricName] = Metric{Type: Counter, Value: metric.Value + update.Value}
-	} else {
-		ms.Data[metricName] = update
+
+	switch newValue := update.Value.(type) {
+	case float64:
+		if metric.Type == Counter {
+			metric.Value = metric.Value.(float64) + newValue
+		} else {
+			metric.Value = newValue
+		}
+	case int64:
+		if metric.Type == Counter {
+			metric.Value = metric.Value.(int64) + newValue
+		} else {
+			metric.Value = newValue
+		}
 	}
+	ms.Data[metricName] = metric
 	return nil
 }
 

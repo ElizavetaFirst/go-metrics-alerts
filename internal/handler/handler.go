@@ -29,27 +29,25 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	parts := strings.Split(r.URL.Path, "/")
-
 	if len(parts) != 5 || parts[1] != "update" {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
 
 	metricType := parts[2]
-	if metricType != "counter" && metricType != "gauge" {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
 	metricName := parts[3]
-	if metricName == "" {
-		http.Error(w, "Status not found", http.StatusNotFound)
-	}
-
-	var metricValue float64
+	var metricValue any
 	var err error
-	if metricValue, err = strconv.ParseFloat(parts[4], 64); err != nil {
+	switch metricType {
+	case "gauge":
+		metricValue, err = strconv.ParseFloat(parts[4], 64)
+	case "counter":
+		metricValue, err = strconv.ParseInt(parts[4], 10, 64)
+	default:
 		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
+	}
+	if err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
 	}
 
 	if err := h.Storage.Update(metricName, storage.Metric{Type: storage.MetricType(metricType), Value: metricValue}); err != nil {
