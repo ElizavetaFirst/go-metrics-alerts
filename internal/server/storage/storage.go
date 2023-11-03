@@ -1,6 +1,8 @@
 package storage
 
-import "sync"
+import (
+	"sync"
+)
 
 type MetricType string
 
@@ -40,19 +42,12 @@ func (ms *MemStorage) Update(metricName string, update Metric) error {
 		return nil
 	}
 
-	switch newValue := update.Value.(type) {
-	case float64:
-		if metric.Type == Counter {
-			metric.Value = metric.Value.(float64) + newValue
-		} else {
-			metric.Value = newValue
-		}
-	case int64:
-		if metric.Type == Counter {
-			metric.Value = metric.Value.(int64) + newValue
-		} else {
-			metric.Value = newValue
-		}
+	newValue := update.Value
+	switch metric.Type {
+	case Gauge:
+		metric.Value = newValue
+	case Counter:
+		metric.Value = metric.Value.(int64) + newValue.(int64)
 	}
 	ms.Data[metricName] = metric
 	return nil

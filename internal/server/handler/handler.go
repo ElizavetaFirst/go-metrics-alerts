@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/storage"
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 )
 
 type Handler struct {

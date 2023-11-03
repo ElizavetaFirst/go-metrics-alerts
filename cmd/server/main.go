@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/handler"
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/storage"
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/handler"
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 )
 
 func main() {

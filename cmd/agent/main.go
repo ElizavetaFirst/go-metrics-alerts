@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/collector"
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/uploader"
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/agent/collector"
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/agent/uploader"
 )
 
 func main() {
@@ -12,4 +12,3 @@ func main() {
 	go c.Run()
 	u.Run()
 }
-
