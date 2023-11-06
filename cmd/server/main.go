@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/handler"
@@ -11,6 +12,13 @@ import (
 )
 
 var addr string
+
+func getEnvString(key string, defaultVal string) string {
+	if val, exists := os.LookupEnv(key); exists {
+		return val
+	}
+	return defaultVal
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "app",
@@ -46,10 +54,11 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&addr, "addr", "a", "localhost:8080", "the address of the endpoint")
+	rootCmd.PersistentFlags().StringVarP(&addr, "addr", "a", getEnvString("ADDRESS", "localhost:8080"), "the address of the endpoint")
 }
 
 func main() {
+	fmt.Println(addr)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 	}

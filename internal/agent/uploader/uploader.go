@@ -34,7 +34,7 @@ func (u *Uploader) Run() {
 func (u *Uploader) SendGaugeMetrics(metrics map[string]float64) {
 	client := &http.Client{}
 	for k, v := range metrics {
-		req, _ := http.NewRequest("POST", u.addr+"/update/gauge/"+k+"/"+strconv.FormatFloat(v, 'f', -1, 64), nil)
+		req, _ := http.NewRequest("POST", "http://"+u.addr+"/update/gauge/"+k+"/"+strconv.FormatFloat(v, 'f', -1, 64), nil)
 		req.Header.Set("Content-Type", "text/plain")
 		resp, err := client.Do(req)
 		if err != nil {
@@ -47,7 +47,7 @@ func (u *Uploader) SendGaugeMetrics(metrics map[string]float64) {
 func (u *Uploader) SendCounterMetrics(metrics map[string]int64) {
 	client := &http.Client{}
 	for k, v := range metrics {
-		req, _ := http.NewRequest("POST", u.addr+"/update/counter/"+k+"/"+strconv.FormatInt(v, 10), nil)
+		req, _ := http.NewRequest("POST", "http://"+u.addr+"/update/counter/"+k+"/"+strconv.FormatInt(v, 10), nil)
 		req.Header.Set("Content-Type", "text/plain")
 		resp, err := client.Do(req)
 		if err != nil {

@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +17,22 @@ var (
 	reportInterval time.Duration
 	pollInterval   time.Duration
 )
+
+func getEnvDuration(key string, defaultVal time.Duration) time.Duration {
+	if envVal, exists := os.LookupEnv(key); exists {
+		if i, err := strconv.Atoi(envVal); err == nil {
+			return time.Duration(i) * time.Second
+		}
+	}
+	return defaultVal
+}
+
+func getEnvString(key, defaultVal string) string {
+	if envVal, exists := os.LookupEnv(key); exists {
+		return envVal
+	}
+	return defaultVal
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "agent",
@@ -43,9 +61,14 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&addr, "addr", "a", "localhost:8080", "the address of the endpoint")
-	rootCmd.PersistentFlags().DurationVarP(&reportInterval, "reportInterval", "r", 10*time.Second, "the frequency of sending metrics to the server")
-	rootCmd.PersistentFlags().DurationVarP(&pollInterval, "pollInterval", "p", 2*time.Second, "the frequency of polling metrics from the runtime package")
+	addr = getEnvString("ADDRESS", "localhost:8080")
+	reportInterval = getEnvDuration("REPORT_INTERVAL", 10*time.Second)
+	pollInterval = getEnvDuration("POLL_INTERVAL", 2*time.Second)
+
+	rootCmd.PersistentFlags().StringVarP(&addr, "addr", "a", addr, "the address of the endpoint")
+	rootCmd.PersistentFlags().DurationVarP(&reportInterval, "reportInterval", "r", reportInterval, "the frequency of sending metrics to the server")
+	rootCmd.PersistentFlags().DurationVarP(&pollInterval, "pollInterval", "p", pollInterval, "the frequency of polling metrics from the runtime package")
+
 }
 
 func main() {
