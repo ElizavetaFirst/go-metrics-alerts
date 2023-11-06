@@ -19,6 +19,7 @@ type Metric struct {
 type Storage interface {
 	Update(metricName string, update Metric) error
 	Get(metricName string) (Metric, bool)
+	GetAll() map[string]Metric
 }
 
 type MemStorage struct {
@@ -58,4 +59,10 @@ func (ms *MemStorage) Get(metricName string) (Metric, bool) {
 	defer ms.RUnlock()
 	metric, exists := ms.Data[metricName]
 	return metric, exists
+}
+
+func (ms *MemStorage) GetAll() map[string]Metric {
+	ms.RLock()
+	defer ms.RUnlock()
+	return ms.Data
 }

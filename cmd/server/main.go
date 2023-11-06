@@ -2,10 +2,10 @@ package main
 
 import (
 	"log"
-	"net/http"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/handler"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -13,7 +13,9 @@ func main() {
 
 	handler := handler.NewHandler(storage)
 
-	http.Handle("/update/", handler)
+	r := gin.Default()
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	handler.RegisterRoutes(r)
+
+	log.Fatal(r.Run(":8080"))
 }
