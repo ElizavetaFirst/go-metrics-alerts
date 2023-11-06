@@ -13,17 +13,19 @@ type Collector struct {
 	RandomValue    float64
 	GaugeMetrics   map[string]float64
 	CounterMetrics map[string]int64
+	pollInterval   time.Duration
 }
 
-func NewCollector() *Collector {
+func NewCollector(pollInterval time.Duration) *Collector {
 	return &Collector{
 		GaugeMetrics:   make(map[string]float64),
 		CounterMetrics: make(map[string]int64),
+		pollInterval:   pollInterval,
 	}
 }
 
 func (c *Collector) Run() {
-	ticker := time.NewTicker(pollInterval)
+	ticker := time.NewTicker(c.pollInterval)
 	var rtm runtime.MemStats
 	for {
 		<-ticker.C

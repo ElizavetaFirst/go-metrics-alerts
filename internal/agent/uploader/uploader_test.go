@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 )
 
 var gaugeMetrics = func() map[string]float64 {
@@ -30,7 +31,7 @@ func TestNewUploader(t *testing.T) {
 		return nil
 	}
 
-	uploader := NewUploader(gaugeFunc, counterFunc)
+	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeFunc, counterFunc)
 
 	if reflect.ValueOf(uploader.gaugeMetricsFunc).Pointer() != reflect.ValueOf(gaugeFunc).Pointer() {
 		t.Error("Gauge metrics function not initialized correctly.")
@@ -49,7 +50,7 @@ func TestUploader_SendGaugeMetrics(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	uploader := NewUploader(gaugeMetrics, counterMetrics)
+	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeMetrics, counterMetrics)
 
 	uploader.SendGaugeMetrics(gaugeMetrics())
 }
@@ -62,7 +63,7 @@ func TestUploader_SendCounterMetrics(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	uploader := NewUploader(gaugeMetrics, counterMetrics)
+	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeMetrics, counterMetrics)
 
 	uploader.SendCounterMetrics(counterMetrics())
 }
