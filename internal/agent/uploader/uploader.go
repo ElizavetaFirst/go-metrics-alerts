@@ -24,6 +24,7 @@ func NewUploader(addr string, reportInterval time.Duration, gaugeMetricsFunc fun
 
 func (u *Uploader) Run() {
 	ticker := time.NewTicker(u.reportInterval)
+
 	for {
 		<-ticker.C
 		u.SendGaugeMetrics(u.gaugeMetricsFunc())
