@@ -2,8 +2,8 @@ package uploader
 
 import (
 	"net/http"
-	"strconv"
 	"time"
+	"fmt"
 )
 
 type Uploader struct {
@@ -35,7 +35,7 @@ func (u *Uploader) Run() {
 func (u *Uploader) SendGaugeMetrics(metrics map[string]float64) {
 	client := &http.Client{}
 	for k, v := range metrics {
-		req, _ := http.NewRequest("POST", "http://"+u.addr+"/update/gauge/"+k+"/"+strconv.FormatFloat(v, 'f', -1, 64), nil)
+		req, _ := http.NewRequest("POST", fmt.Sprintf("http://%s/update/gauge/%s/%f", u.addr, k, v), nil)
 		req.Header.Set("Content-Type", "text/plain")
 		resp, err := client.Do(req)
 		if err != nil {
@@ -48,7 +48,7 @@ func (u *Uploader) SendGaugeMetrics(metrics map[string]float64) {
 func (u *Uploader) SendCounterMetrics(metrics map[string]int64) {
 	client := &http.Client{}
 	for k, v := range metrics {
-		req, _ := http.NewRequest("POST", "http://"+u.addr+"/update/counter/"+k+"/"+strconv.FormatInt(v, 10), nil)
+		req, _ := http.NewRequest("POST", fmt.Sprintf("http://%s/update/counter/%s/%d", u.addr, k, v), nil)
 		req.Header.Set("Content-Type", "text/plain")
 		resp, err := client.Do(req)
 		if err != nil {
