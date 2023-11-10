@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"sync"
 )
 
@@ -11,58 +12,62 @@ const (
 	Counter MetricType = "counter"
 )
 
-type Metric struct {
-	Type  MetricType
-	Value any
-}
-
 type Storage interface {
 	Update(metricName string, update Metric) error
 	Get(metricName string) (Metric, bool)
 	GetAll() map[string]Metric
 }
 
-type MemStorage struct {
-	Data map[string]Metric
-	sync.RWMutex
+type memStorage struct {
+	Data sync.Map
 }
 
-func NewMemStorage() *MemStorage {
-	return &MemStorage{Data: make(map[string]Metric)}
+func NewMemStorage() *memStorage {
+	return &memStorage{}
 }
 
-func (ms *MemStorage) Update(metricName string, update Metric) error {
-	ms.Lock()
-	defer ms.Unlock()
-	metric, exists := ms.Data[metricName]
+func (ms *memStorage) Update(metricName string, update Metric) error {
+	m, exists := ms.Data.Load(metricName)
 	if !exists {
-		ms.Data[metricName] = update
+		ms.Data.Store(metricName, update)
 		return nil
 	}
+	metric := m.(Metric)
 	if metric.Type != update.Type {
 		return nil
 	}
 
-	newValue := update.Value
 	switch metric.Type {
 	case Gauge:
-		metric.Value = newValue
+		metric.Value = update.Value
 	case Counter:
-		metric.Value = metric.Value.(int64) + newValue.(int64)
+		if value, ok := metric.Value.(int64); ok {
+			if newValue, ok := update.Value.(int64); ok {
+				metric.Value = value + newValue
+			}
+		} else {
+			return errors.New("unexpected value type for counter metric")
+		}
+
 	}
-	ms.Data[metricName] = metric
+
+	ms.Data.Store(metricName, metric)
 	return nil
 }
 
-func (ms *MemStorage) Get(metricName string) (Metric, bool) {
-	ms.RLock()
-	defer ms.RUnlock()
-	metric, exists := ms.Data[metricName]
-	return metric, exists
+func (ms *memStorage) Get(metricName string) (Metric, bool) {
+	metric, exists := ms.Data.Load(metricName)
+	if exists {
+		return metric.(Metric), exists
+	}
+	return Metric{}, exists
 }
 
-func (ms *MemStorage) GetAll() map[string]Metric {
-	ms.RLock()
-	defer ms.RUnlock()
-	return ms.Data
+func (ms *memStorage) GetAll() map[string]Metric {
+	result := make(map[string]Metric)
+	ms.Data.Range(func(key, value interface{}) bool {
+		result[key.(string)] = value.(Metric)
+		return true
+	})
+	return result
 }
