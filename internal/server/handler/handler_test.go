@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type mockStorage interface{}
+type mockStorage struct{}
 
 func (ms *mockStorage) Update(name string, metric storage.Metric) error {
 	return nil
