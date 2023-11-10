@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
@@ -76,12 +77,13 @@ func (h *Handler) handleGetValue(c *gin.Context) {
 func (h *Handler) handleGetAllValues(c *gin.Context) {
 	values := h.Storage.GetAll()
 
-	// создаем HTML ответ
-	htmlResponse := "<html><body>"
-	for name, metric := range values {
-		htmlResponse += fmt.Sprintf("<p>%s (%s): %v</p>", name, metric.Type, metric.Value)
-	}
-	htmlResponse += "</body></html>"
+	var htmlResponse strings.Builder
 
-	c.Data(http.StatusOK, "text/html", []byte(htmlResponse))
+	htmlResponse.WriteString("<html><body>")
+	for name, metric := range values {
+		htmlResponse.WriteString(fmt.Sprintf("<p>%s (%s): %v</p>", name, metric.Type, metric.Value))
+	}
+	htmlResponse.WriteString("</body></html>")
+
+	c.Data(http.StatusOK, "text/html", []byte(htmlResponse.String()))
 }
