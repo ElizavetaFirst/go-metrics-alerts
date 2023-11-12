@@ -9,12 +9,9 @@ import (
 
 var addr string
 
-func init() {
-	root.RootCmd.PersistentFlags().StringVarP(&addr, "addr", "a", env.GetEnvString("ADDRESS", "localhost:8080"), "the address of the endpoint")
-}
-
 func main() {
-	fmt.Println(addr)
+	root.RootCmd.PersistentFlags().StringVarP(&addr, "addr", "a", env.GetEnvString("ADDRESS", "localhost:8080"), "the address of the endpoint")
+
 	if err := root.RootCmd.Execute(); err != nil {
 		fmt.Println(err)
 	}
