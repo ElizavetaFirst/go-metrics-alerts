@@ -1,15 +1,14 @@
 package env
 
-import(
+import (
 	"os"
 	"strconv"
-	"time"
 )
 
-func GetEnvDuration(key string, defaultVal time.Duration) time.Duration {
+func GetEnvDuration(key string, defaultVal int) int {
 	if envVal, exists := os.LookupEnv(key); exists {
 		if i, err := strconv.Atoi(envVal); err == nil {
-			return time.Duration(i) * time.Second
+			return i
 		}
 	}
 	return defaultVal

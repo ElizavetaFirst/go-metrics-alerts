@@ -3,6 +3,7 @@ package root
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/agent/collector"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/agent/uploader"
@@ -23,24 +24,24 @@ var RootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		addr, err := cmd.Flags().GetString("addr")
 		if err != nil {
-		  return err
+			return err
 		}
-		reportInterval, err := cmd.Flags().GetDuration("reportInterval")
+		reportInterval, err := cmd.Flags().GetInt("reportInterval")
 		if err != nil {
-		  return err
+			return err
 		}
-		pollInterval, err := cmd.Flags().GetDuration("pollInterval")
+		pollInterval, err := cmd.Flags().GetInt("pollInterval")
 		if err != nil {
-		  return err
+			return err
 		}
-	  
+
 		parts := strings.Split(addr, ":")
 		if len(parts) < 2 || parts[1] == "" {
 			return fmt.Errorf("you must provide a non-empty port number")
 		}
 
-		c := collector.NewCollector(pollInterval)
-		u := uploader.NewUploader(addr, reportInterval, c.GetGaugeMetrics, c.GetCounterMetrics)
+		c := collector.NewCollector(time.Duration(pollInterval) * time.Second)
+		u := uploader.NewUploader(addr, time.Duration(reportInterval)*time.Second, c.GetGaugeMetrics, c.GetCounterMetrics)
 
 		go c.Run()
 		u.Run()
