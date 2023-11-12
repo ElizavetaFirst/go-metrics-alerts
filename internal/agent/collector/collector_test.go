@@ -7,7 +7,8 @@ import (
 )
 
 func TestCollector_GetGaugeMetrics(t *testing.T) {
-	collector := NewCollector(10 * time.Second)
+	errorChan := make(chan error)
+	collector := NewCollector(10*time.Second, errorChan)
 	collector.GaugeMetrics = map[string]float64{
 		"Alloc": 10.0,
 	}
@@ -20,7 +21,8 @@ func TestCollector_GetGaugeMetrics(t *testing.T) {
 }
 
 func TestCollector_GetCounterMetrics(t *testing.T) {
-	collector := NewCollector(10 * time.Second)
+	errorChan := make(chan error)
+	collector := NewCollector(10*time.Second, errorChan)
 	collector.CounterMetrics = map[string]int64{
 		"Alloc": 5,
 	}

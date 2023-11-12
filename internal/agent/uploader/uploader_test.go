@@ -31,7 +31,8 @@ func TestNewUploader(t *testing.T) {
 		return nil
 	}
 
-	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeFunc, counterFunc)
+	errorChan := make(chan error)
+	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeFunc, counterFunc, errorChan)
 
 	if reflect.ValueOf(uploader.gaugeMetricsFunc).Pointer() != reflect.ValueOf(gaugeFunc).Pointer() {
 		t.Error("Gauge metrics function not initialized correctly.")
@@ -50,7 +51,8 @@ func TestUploader_SendGaugeMetrics(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeMetrics, counterMetrics)
+	errorChan := make(chan error)
+	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeMetrics, counterMetrics, errorChan)
 
 	uploader.SendGaugeMetrics(gaugeMetrics())
 }
@@ -63,7 +65,8 @@ func TestUploader_SendCounterMetrics(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeMetrics, counterMetrics)
+	errorChan := make(chan error)
+	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeMetrics, counterMetrics, errorChan)
 
 	uploader.SendCounterMetrics(counterMetrics())
 }
