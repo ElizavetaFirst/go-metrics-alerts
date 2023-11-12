@@ -40,8 +40,9 @@ var RootCmd = &cobra.Command{
 			return fmt.Errorf("you must provide a non-empty port number")
 		}
 
-		c := collector.NewCollector(time.Duration(pollInterval) * time.Second)
-		u := uploader.NewUploader(addr, time.Duration(reportInterval)*time.Second, c.GetGaugeMetrics, c.GetCounterMetrics)
+		errorChan := make(chan error)
+		c := collector.NewCollector(time.Duration(pollInterval)*time.Second, errorChan)
+		u := uploader.NewUploader(addr, time.Duration(reportInterval)*time.Second, c.GetGaugeMetrics, c.GetCounterMetrics, errorChan)
 
 		go c.Run()
 		u.Run()

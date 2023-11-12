@@ -7,16 +7,10 @@ import (
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/env"
 )
 
-var (
-	addr           string
-	reportInterval int
-	pollInterval   int
-)
-
 func main() {
-	addr = env.GetEnvString("ADDRESS", "localhost:8080")
-	reportInterval = env.GetEnvDuration("REPORT_INTERVAL", 10)
-	pollInterval = env.GetEnvDuration("POLL_INTERVAL", 2)
+	addr := env.GetEnvString("ADDRESS", "localhost:8080")
+	reportInterval := env.GetEnvDuration("REPORT_INTERVAL", 10)
+	pollInterval := env.GetEnvDuration("POLL_INTERVAL", 2)
 
 	root.RootCmd.PersistentFlags().StringVarP(&addr, "addr", "a", addr, "the address of the endpoint")
 	root.RootCmd.PersistentFlags().IntVarP(&reportInterval, "reportInterval", "r", reportInterval, "the frequency of sending metrics to the server")

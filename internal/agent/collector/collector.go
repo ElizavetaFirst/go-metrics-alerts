@@ -1,12 +1,11 @@
 package collector
 
 import (
+	"fmt"
 	"math/rand"
 	"runtime"
 	"time"
 )
-
-const pollInterval = 2 * time.Second
 
 type Collector struct {
 	PollCount      int64
@@ -14,13 +13,15 @@ type Collector struct {
 	GaugeMetrics   map[string]float64
 	CounterMetrics map[string]int64
 	pollInterval   time.Duration
+	errorChan      chan error
 }
 
-func NewCollector(pollInterval time.Duration) *Collector {
+func NewCollector(pollInterval time.Duration, errorChan chan error) *Collector {
 	return &Collector{
 		GaugeMetrics:   make(map[string]float64),
 		CounterMetrics: make(map[string]int64),
 		pollInterval:   pollInterval,
+		errorChan:      errorChan,
 	}
 }
 
@@ -28,11 +29,17 @@ func (c *Collector) Run() {
 	ticker := time.NewTicker(c.pollInterval)
 	var rtm runtime.MemStats
 	for {
-		<-ticker.C
-		c.PollCount++
-		c.RandomValue = rand.Float64()
-		runtime.ReadMemStats(&rtm)
-		c.updateMetrics(rtm)
+		select {
+		case <-c.errorChan:
+			fmt.Println("received error, stopping run")
+			return
+		default:
+			<-ticker.C
+			c.PollCount++
+			c.RandomValue = rand.Float64()
+			runtime.ReadMemStats(&rtm)
+			c.updateMetrics(rtm)
+		}
 	}
 }
 
