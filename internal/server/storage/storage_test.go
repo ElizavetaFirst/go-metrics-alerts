@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -12,10 +13,13 @@ func TestGetGauge(t *testing.T) {
 		t.Errorf("expected false for nonexistent metric, got %v", ok)
 	}
 
-	ms.Update("testMetric", Metric{
+	err := ms.Update("testMetric", Metric{
 		Type:  Gauge,
 		Value: 23.5,
 	})
+	if err != nil {
+		fmt.Printf("can't update testMetric %v", err)
+	}
 
 	metric, ok := ms.Get("testMetric")
 	if ok == false {
@@ -33,15 +37,21 @@ func TestGetCounter(t *testing.T) {
 		t.Errorf("expected false for nonexistent metric, got %v", ok)
 	}
 
-	ms.Update("testMetric", Metric{
+	err := ms.Update("testMetric", Metric{
 		Type:  Counter,
 		Value: int64(5),
 	})
+	if err != nil {
+		fmt.Printf("can't update testMetric %v", err)
+	}
 
-	ms.Update("testMetric", Metric{
+	err = ms.Update("testMetric", Metric{
 		Type:  Counter,
 		Value: int64(5),
 	})
+	if err != nil {
+		fmt.Printf("can't update testMetric %v", err)
+	}
 
 	metric, ok := ms.Get("testMetric")
 	if ok == false {

@@ -10,6 +10,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	updateURL     = "/update/:metricType/:metricName/:metricValue"
+	metricTypeStr = "metricType"
+	metricNameStr = "metricName"
+)
+
 type Handler struct {
 	Storage storage.Storage
 }
@@ -19,16 +25,15 @@ func NewHandler(s storage.Storage) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
-	r.POST("/update/:metricType/:metricName/:metricValue", h.handleUpdate)
-	r.GET("/update/:metricType/:metricName/:metricValue", h.handleNotAllowed)
+	r.POST(updateURL, h.handleUpdate)
+	r.GET(updateURL, h.handleNotAllowed)
 	r.GET("/value/:metricType/:metricName", h.handleGetValue)
 	r.GET("/", h.handleGetAllValues)
-
 }
 
 func (h *Handler) handleUpdate(c *gin.Context) {
-	metricType := c.Param("metricType")
-	metricName := c.Param("metricName")
+	metricType := c.Param(metricTypeStr)
+	metricName := c.Param(metricNameStr)
 	metricValueParam := c.Param("metricValue")
 
 	var metricValue any
@@ -48,7 +53,8 @@ func (h *Handler) handleUpdate(c *gin.Context) {
 		return
 	}
 
-	if err := h.Storage.Update(metricName, storage.Metric{Type: storage.MetricType(metricType), Value: metricValue}); err != nil {
+	if err := h.Storage.Update(metricName, storage.Metric{Type: storage.MetricType(metricType),
+		Value: metricValue}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating metric"})
 		return
 	}
@@ -60,10 +66,9 @@ func (h *Handler) handleNotAllowed(c *gin.Context) {
 	c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Method Not Allowed"})
 }
 
-// обработчик для GET запроса на получение значения метрики
 func (h *Handler) handleGetValue(c *gin.Context) {
-	metricType := c.Param("metricType")
-	metricName := c.Param("metricName")
+	metricType := c.Param(metricTypeStr)
+	metricName := c.Param(metricNameStr)
 
 	value, found := h.Storage.Get(metricName)
 	if !found || string(value.Type) != metricType {
@@ -71,7 +76,7 @@ func (h *Handler) handleGetValue(c *gin.Context) {
 		return
 	}
 
-	c.String(http.StatusOK, "%v", value.Value) // возвращаем значение
+	c.String(http.StatusOK, "%v", value.Value)
 }
 
 func (h *Handler) handleGetAllValues(c *gin.Context) {

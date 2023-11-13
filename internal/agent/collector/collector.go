@@ -7,13 +7,15 @@ import (
 	"time"
 )
 
+const randomFactor = 100
+
 type Collector struct {
-	PollCount      int64
-	RandomValue    float64
-	GaugeMetrics   map[string]float64
 	CounterMetrics map[string]int64
-	pollInterval   time.Duration
+	GaugeMetrics   map[string]float64
 	errorChan      chan error
+	RandomValue    float64
+	pollInterval   time.Duration
+	PollCount      int64
 }
 
 func NewCollector(pollInterval time.Duration, errorChan chan error) *Collector {
@@ -48,7 +50,7 @@ func (c *Collector) updateMetrics(rtm runtime.MemStats) {
 		"Alloc":         float64(rtm.Alloc),
 		"BuckHashSys":   float64(rtm.BuckHashSys),
 		"Frees":         float64(rtm.Frees),
-		"GCCPUFraction": float64(rtm.GCCPUFraction),
+		"GCCPUFraction": rtm.GCCPUFraction,
 		"GCSys":         float64(rtm.GCSys),
 		"HeapAlloc":     float64(rtm.HeapAlloc),
 		"HeapIdle":      float64(rtm.HeapIdle),
@@ -103,8 +105,8 @@ func (c *Collector) updateMetrics(rtm runtime.MemStats) {
 		"StackSys":      int64(rtm.StackSys),
 		"Sys":           int64(rtm.Sys),
 		"TotalAlloc":    int64(rtm.TotalAlloc),
-		"PollCount":     int64(c.PollCount),
-		"RandomValue":   int64(c.RandomValue * 100),
+		"PollCount":     c.PollCount,
+		"RandomValue":   int64(c.RandomValue * randomFactor),
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/handler"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +25,7 @@ var RootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		addr, err := cmd.Flags().GetString("addr")
 		if err != nil {
-		  return err
+			return errors.Wrap(err, "can't get addr flag")
 		}
 		parts := strings.Split(addr, ":")
 		if len(parts) < 2 || parts[1] == "" {
@@ -41,7 +42,7 @@ var RootCmd = &cobra.Command{
 
 		err = r.Run(addr)
 		if err != nil {
-			return fmt.Errorf("run addr %s error %v", addr, err)
+			return fmt.Errorf("run addr %s error %w", addr, err)
 		}
 		return nil
 	},

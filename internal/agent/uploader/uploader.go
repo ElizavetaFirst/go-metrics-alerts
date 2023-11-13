@@ -4,6 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/pkg/errors"
+)
+
+const (
+	contentTypeStr = "Content-Type"
+	textPlainStr   = "text/plain"
 )
 
 type (
@@ -12,9 +19,9 @@ type (
 	Uploader               struct {
 		counterMetricsFunc CounterMetricsFuncType
 		gaugeMetricsFunc   GaugeMetricsFuncType
+		errorChan          chan error
 		addr               string
 		reportInterval     time.Duration
-		errorChan          chan error
 	}
 )
 
@@ -54,30 +61,36 @@ func (u *Uploader) Run() {
 	}
 }
 
-func (u *Uploader) SendGaugeMetrics(metrics map[string]float64) error {
+func (u *Uploader) sendMetrics(url string) error {
 	client := &http.Client{}
+	req, _ := http.NewRequest(http.MethodPost, url, nil)
+	req.Header.Set(contentTypeStr, textPlainStr)
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "can't send update request")
+	}
+	if err = resp.Body.Close(); err != nil {
+		return errors.Wrap(err, "can't close update request resp.Body")
+	}
+	return nil
+}
+
+func (u *Uploader) SendGaugeMetrics(metrics map[string]float64) error {
 	for k, v := range metrics {
-		req, _ := http.NewRequest("POST", fmt.Sprintf("http://%s/update/gauge/%s/%f", u.addr, k, v), nil)
-		req.Header.Set("Content-Type", "text/plain")
-		resp, err := client.Do(req)
-		if err != nil {
+		url := fmt.Sprintf("http://%s/update/gauge/%s/%f", u.addr, k, v)
+		if err := u.sendMetrics(url); err != nil {
 			return err
 		}
-		resp.Body.Close()
 	}
 	return nil
 }
 
 func (u *Uploader) SendCounterMetrics(metrics map[string]int64) error {
-	client := &http.Client{}
 	for k, v := range metrics {
-		req, _ := http.NewRequest("POST", fmt.Sprintf("http://%s/update/counter/%s/%d", u.addr, k, v), nil)
-		req.Header.Set("Content-Type", "text/plain")
-		resp, err := client.Do(req)
-		if err != nil {
+		url := fmt.Sprintf("http://%s/update/counter/%s/%d", u.addr, k, v)
+		if err := u.sendMetrics(url); err != nil {
 			return err
 		}
-		resp.Body.Close()
 	}
 	return nil
 }

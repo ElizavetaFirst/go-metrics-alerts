@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 )
 
@@ -32,7 +33,10 @@ func (ms *memStorage) Update(metricName string, update Metric) error {
 		ms.Data.Store(metricName, update)
 		return nil
 	}
-	metric := m.(Metric)
+	metric, ok := m.(Metric)
+	if !ok {
+		return errors.New("can't get metric")
+	}
 	if metric.Type != update.Type {
 		return nil
 	}
@@ -48,7 +52,6 @@ func (ms *memStorage) Update(metricName string, update Metric) error {
 		} else {
 			return errors.New("unexpected value type for counter metric")
 		}
-
 	}
 
 	ms.Data.Store(metricName, metric)
@@ -66,7 +69,17 @@ func (ms *memStorage) Get(metricName string) (Metric, bool) {
 func (ms *memStorage) GetAll() map[string]Metric {
 	result := make(map[string]Metric)
 	ms.Data.Range(func(key, value interface{}) bool {
-		result[key.(string)] = value.(Metric)
+		keyStr, ok := key.(string)
+		if !ok {
+			fmt.Printf("can't get key value")
+		}
+
+		valueMetric, ok := value.(Metric)
+		if !ok {
+			fmt.Printf("can't get value")
+		}
+
+		result[keyStr] = valueMetric
 		return true
 	})
 	return result

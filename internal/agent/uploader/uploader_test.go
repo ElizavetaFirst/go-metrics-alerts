@@ -1,6 +1,7 @@
 package uploader
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -45,7 +46,7 @@ func TestNewUploader(t *testing.T) {
 
 func TestUploader_SendGaugeMetrics(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
+		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
 	}))
@@ -54,12 +55,14 @@ func TestUploader_SendGaugeMetrics(t *testing.T) {
 	errorChan := make(chan error)
 	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeMetrics, counterMetrics, errorChan)
 
-	uploader.SendGaugeMetrics(gaugeMetrics())
+	if err := uploader.SendGaugeMetrics(gaugeMetrics()); err != nil {
+		fmt.Printf("SendGaugeMetrics return error %v", err)
+	}
 }
 
 func TestUploader_SendCounterMetrics(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
+		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
 	}))
@@ -68,5 +71,7 @@ func TestUploader_SendCounterMetrics(t *testing.T) {
 	errorChan := make(chan error)
 	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeMetrics, counterMetrics, errorChan)
 
-	uploader.SendCounterMetrics(counterMetrics())
+	if err := uploader.SendCounterMetrics(counterMetrics()); err != nil {
+		fmt.Printf("SendCounterMetrics return error %v", err)
+	}
 }
