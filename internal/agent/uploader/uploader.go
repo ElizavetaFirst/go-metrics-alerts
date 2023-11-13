@@ -42,10 +42,14 @@ func (u *Uploader) Run() {
 		case <-ticker.C:
 			if err := u.SendGaugeMetrics(u.gaugeMetricsFunc()); err != nil {
 				u.errorChan <- err
+				return
 			}
 			if err := u.SendCounterMetrics(u.counterMetricsFunc()); err != nil {
 				u.errorChan <- err
+				return
 			}
+		default:
+			continue
 		}
 	}
 }
