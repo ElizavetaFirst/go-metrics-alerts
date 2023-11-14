@@ -7,17 +7,17 @@ ITERS := $(addprefix iter,${NUMBERS})
 
 METRICSTEST_ARGS = -test.v -source-path=.
 
-.PHONY:build
+.PHONY: build
 build:
 	go build -C ./cmd/agent/ -o agent
 	go build -C ./cmd/server/ -o server
 
-.PHONY:clean
+.PHONY: clean
 clean:
 	-rm -f ./cmd/agent/agent
 	-rm -f ./cmd/server/server
 
-.PHONY:statictest
+.PHONY: statictest
 statictest:
 	go vet -vettool=$$(which statictest) ./...
 
