@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/handler"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,8 @@ var RootCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		logger.Init()
+
 		addr, err := cmd.Flags().GetString("addr")
 		if err != nil {
 			return errors.Wrap(err, "can't get addr flag")
@@ -44,6 +47,7 @@ var RootCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("run addr %s error %w", addr, err)
 		}
+
 		return nil
 	},
 }

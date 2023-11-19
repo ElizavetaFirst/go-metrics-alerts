@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
 )
@@ -25,10 +26,10 @@ func NewHandler(s storage.Storage) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
-	r.POST(updateURL, h.handleUpdate)
+	r.POST(updateURL, logger.LogRequest(), h.handleUpdate)
 	r.GET(updateURL, h.handleNotAllowed)
-	r.GET("/value/:metricType/:metricName", h.handleGetValue)
-	r.GET("/", h.handleGetAllValues)
+	r.GET("/value/:metricType/:metricName", logger.LogResponse(), h.handleGetValue)
+	r.GET("/", logger.LogResponse(), h.handleGetAllValues)
 }
 
 func (h *Handler) handleUpdate(c *gin.Context) {
