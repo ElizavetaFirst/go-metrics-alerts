@@ -41,22 +41,15 @@ func NewUploader(
 }
 
 func (u *Uploader) Run() {
-	time.NewTicker(u.reportInterval)
-
 	ticker := time.NewTicker(u.reportInterval)
-	for {
-		select {
-		case <-ticker.C:
-			if err := u.SendGaugeMetrics(u.gaugeMetricsFunc()); err != nil {
-				u.errorChan <- err
-				return
-			}
-			if err := u.SendCounterMetrics(u.counterMetricsFunc()); err != nil {
-				u.errorChan <- err
-				return
-			}
-		default:
-			continue
+	for range ticker.C {
+		if err := u.SendGaugeMetrics(u.gaugeMetricsFunc()); err != nil {
+			u.errorChan <- err
+			return
+		}
+		if err := u.SendCounterMetrics(u.counterMetricsFunc()); err != nil {
+			u.errorChan <- err
+			return
 		}
 	}
 }
