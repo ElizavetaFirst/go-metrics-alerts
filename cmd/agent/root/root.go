@@ -25,6 +25,7 @@ var RootCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logger.Init()
+		defer logger.Sync()
 
 		addr, err := cmd.Flags().GetString("addr")
 		if err != nil {

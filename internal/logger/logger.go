@@ -1,30 +1,27 @@
 package logger
 
 import (
-	"os"
-	"strings"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 var log *zap.Logger
 
 func Init() {
-	logger := zap.New(zapcore.NewCore(
-		zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
-		zapcore.Lock(zapcore.AddSync(os.Stderr)),
-		zap.AtomicLevel{},
-	))
-	defer func() {
-		if err := logger.Sync(); err != nil {
-			if err := logger.Sync(); err != nil && !strings.Contains(err.Error(), "inappropriate ioctl for device") {
-				logger.Error("Can't sync zap logger", zap.Error(err))
-			}
-		}
-	}()
+	var err error
+	log, err = zap.NewProduction()
+	if err != nil {
+		panic(fmt.Sprintf("can't initialize zap logger: %v", err))
+	}
+}
+
+func Sync() {
+	if err := log.Sync(); err != nil {
+		panic(fmt.Sprintf("Can't sync zap logger: %v", err))
+	}
 }
 
 func GetLogger() *zap.Logger {

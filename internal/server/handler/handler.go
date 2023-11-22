@@ -30,6 +30,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.POST(updateURL, logger.LogRequest(), h.handleUpdate)
 	r.GET(updateURL, h.handleNotAllowed)
 	r.GET("/value/:metricType/:metricName", logger.LogResponse(), h.handleGetValue)
+	r.POST("/value", logger.LogResponse(), h.handleJsonGetValue)
 	r.GET("/", logger.LogResponse(), h.handleGetAllValues)
 }
 
@@ -37,7 +38,6 @@ func (h *Handler) handleUpdate(c *gin.Context) {
 	var metricType string
 	var metricName string
 	var metricValue any
-	fmt.Println(c.ContentType())
 	if c.ContentType() == "application/json" {
 		var metrics metrics.Metrics
 		if err := c.ShouldBindJSON(&metrics); err != nil {
@@ -90,6 +90,37 @@ func (h *Handler) handleUpdate(c *gin.Context) {
 
 func (h *Handler) handleNotAllowed(c *gin.Context) {
 	c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Method Not Allowed"})
+}
+
+func (h *Handler) handleJsonGetValue(c *gin.Context) {
+	var metrics metrics.Metrics
+	if err := c.ShouldBindJSON(&metrics); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	value, found := h.Storage.Get(metrics.ID)
+	if !found || string(value.Type) != metrics.MType {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	if metrics.MType == "counter" {
+		delta, ok := value.Value.(int64)
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data type for Delta"})
+			return
+		}
+		metrics.Delta = &delta
+	} else if metrics.MType == "gauge" {
+		val, ok := value.Value.(float64)
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data type for Value"})
+			return
+		}
+		metrics.Value = &val
+	}
+
+	c.JSON(http.StatusOK, metrics)
 }
 
 func (h *Handler) handleGetValue(c *gin.Context) {
