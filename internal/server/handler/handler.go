@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/metrics"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
 )
@@ -33,27 +34,51 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 }
 
 func (h *Handler) handleUpdate(c *gin.Context) {
-	metricType := c.Param(metricTypeStr)
-	metricName := c.Param(metricNameStr)
-	metricValueParam := c.Param("metricValue")
-
+	var metricType string
+	var metricName string
 	var metricValue any
-	var err error
-	switch metricType {
-	case "gauge":
-		metricValue, err = strconv.ParseFloat(metricValueParam, 64)
-	case "counter":
-		metricValue, err = strconv.ParseInt(metricValueParam, 10, 64)
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
-		return
-	}
+	fmt.Println(c.ContentType())
+	if c.ContentType() == "application/json" {
+		var metrics metrics.Metrics
+		if err := c.ShouldBindJSON(&metrics); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request: malformed JSON"})
+			return
+		}
 
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
-		return
-	}
+		metricName = metrics.ID
+		metricType = metrics.MType
 
+		switch metricType {
+		case "gauge":
+			metricValue = *metrics.Value
+		case "counter":
+			metricValue = *metrics.Delta
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request: metricType should be gauge or counter"})
+			return
+		}
+	} else {
+		metricType = c.Param(metricTypeStr)
+		metricName = c.Param(metricNameStr)
+		metricValueParam := c.Param("metricValue")
+		fmt.Println(metricType, metricName, metricValueParam)
+
+		var err error
+		switch metricType {
+		case "gauge":
+			metricValue, err = strconv.ParseFloat(metricValueParam, 64)
+		case "counter":
+			metricValue, err = strconv.ParseInt(metricValueParam, 10, 64)
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
+			return
+		}
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
+			return
+		}
+	}
 	if err := h.Storage.Update(metricName, storage.Metric{Type: storage.MetricType(metricType),
 		Value: metricValue}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating metric"})
