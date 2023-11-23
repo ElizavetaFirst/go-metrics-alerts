@@ -7,13 +7,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/metrics"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 const (
 	contentTypeStr = "Content-Type"
 	textPlainStr   = "text/plain"
+	maxErrors      = 1000
 )
 
 type (
@@ -45,23 +48,30 @@ func NewUploader(
 
 func (u *Uploader) Run() {
 	ticker := time.NewTicker(u.reportInterval)
+
+	errorCount := 0
 	for range ticker.C {
-		if err := u.SendGaugeMetrics(u.gaugeMetricsFunc()); err != nil {
-			u.errorChan <- err
-			return
+		for {
+			if err := u.SendGaugeMetricsJson(u.gaugeMetricsFunc()); err != nil {
+				logger.GetLogger().Warn("SendGaugeMetricsJson return error", zap.Error(err))
+				errorCount++
+				if errorCount >= maxErrors {
+					u.errorChan <- err
+					return
+				}
+				continue
+			}
+			if err := u.SendCounterMetricsJson(u.counterMetricsFunc()); err != nil {
+				logger.GetLogger().Warn("SendCounterMetricsJson return error", zap.Error(err))
+				errorCount++
+				if errorCount >= maxErrors {
+					u.errorChan <- err
+					return
+				}
+				continue
+			}
+			break
 		}
-		if err := u.SendCounterMetrics(u.counterMetricsFunc()); err != nil {
-			u.errorChan <- err
-			return
-		}
-		/*if err := u.SendGaugeMetricsJson(u.gaugeMetricsFunc()); err != nil {
-			u.errorChan <- err
-			return
-		}
-		if err := u.SendCounterMetricsJson(u.counterMetricsFunc()); err != nil {
-			u.errorChan <- err
-			return
-		}*/
 	}
 }
 
@@ -129,7 +139,7 @@ func (u *Uploader) SendGaugeMetricsJson(metricsMap map[string]float64) error {
 			Value: &v,
 		}
 
-		url := fmt.Sprintf("http://%s/update/gauge/%s/%f", u.addr, k, v)
+		url := fmt.Sprintf("http://%s/update", u.addr)
 		if err := u.sendMetricsJson(url, metric); err != nil {
 			return err
 		}
@@ -145,7 +155,7 @@ func (u *Uploader) SendCounterMetricsJson(metricsMap map[string]int64) error {
 			Delta: &v,
 		}
 
-		url := fmt.Sprintf("http://%s/update/counter/%s/%d", u.addr, k, v)
+		url := fmt.Sprintf("http://%s/update", u.addr)
 		if err := u.sendMetricsJson(url, metric); err != nil {
 			return err
 		}

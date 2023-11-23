@@ -8,7 +8,7 @@ import (
 func TestGetGauge(t *testing.T) {
 	ms := NewMemStorage()
 
-	_, ok := ms.Get("nonexistent")
+	_, ok := ms.Get("nonexistent", "gauge")
 	if ok == true {
 		t.Errorf("expected false for nonexistent metric, got %v", ok)
 	}
@@ -21,7 +21,7 @@ func TestGetGauge(t *testing.T) {
 		fmt.Printf("can't update testMetric %v", err)
 	}
 
-	metric, ok := ms.Get("testMetric")
+	metric, ok := ms.Get("testMetric", "gauge")
 	if ok == false {
 		t.Errorf("expected true for existent metric, got %v", ok)
 	} else if metric.Value != 23.5 {
@@ -32,7 +32,7 @@ func TestGetGauge(t *testing.T) {
 func TestGetCounter(t *testing.T) {
 	ms := NewMemStorage()
 
-	_, ok := ms.Get("nonexistent")
+	_, ok := ms.Get("nonexistent", "counter")
 	if ok == true {
 		t.Errorf("expected false for nonexistent metric, got %v", ok)
 	}
@@ -53,7 +53,7 @@ func TestGetCounter(t *testing.T) {
 		fmt.Printf("can't update testMetric %v", err)
 	}
 
-	metric, ok := ms.Get("testMetric")
+	metric, ok := ms.Get("testMetric", "counter")
 	if ok == false {
 		t.Errorf("expected true for existent metric, got %v", ok)
 	} else if metric.Value != int64(10) {

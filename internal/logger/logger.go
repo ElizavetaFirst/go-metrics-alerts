@@ -1,7 +1,9 @@
 package logger
 
 import (
+	"errors"
 	"fmt"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +21,7 @@ func Init() {
 }
 
 func Sync() {
-	if err := log.Sync(); err != nil {
+	if err := log.Sync(); err != nil && (!errors.Is(err, syscall.EBADF) && !errors.Is(err, syscall.ENOTTY)) {
 		panic(fmt.Sprintf("Can't sync zap logger: %v", err))
 	}
 }

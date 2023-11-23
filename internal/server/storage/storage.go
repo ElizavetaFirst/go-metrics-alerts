@@ -15,7 +15,7 @@ const (
 
 type Storage interface {
 	Update(metricName string, update Metric) error
-	Get(metricName string) (Metric, bool)
+	Get(metricName string, metricType string) (Metric, bool)
 	GetAll() map[string]Metric
 }
 
@@ -28,17 +28,16 @@ func NewMemStorage() *memStorage {
 }
 
 func (ms *memStorage) Update(metricName string, update Metric) error {
-	m, exists := ms.Data.Load(metricName)
+	uniqueID := metricName + string(update.Type)
+	fmt.Println(uniqueID)
+	m, exists := ms.Data.Load(uniqueID)
 	if !exists {
-		ms.Data.Store(metricName, update)
+		ms.Data.Store(uniqueID, update)
 		return nil
 	}
 	metric, ok := m.(Metric)
 	if !ok {
 		return errors.New("can't get metric")
-	}
-	if metric.Type != update.Type {
-		return nil
 	}
 
 	switch metric.Type {
@@ -54,12 +53,13 @@ func (ms *memStorage) Update(metricName string, update Metric) error {
 		}
 	}
 
-	ms.Data.Store(metricName, metric)
+	ms.Data.Store(uniqueID, metric)
 	return nil
 }
 
-func (ms *memStorage) Get(metricName string) (Metric, bool) {
-	metric, exists := ms.Data.Load(metricName)
+func (ms *memStorage) Get(metricName string, metricType string) (Metric, bool) {
+	uniqueID := metricName + metricType
+	metric, exists := ms.Data.Load(uniqueID)
 	if exists {
 		return metric.(Metric), exists
 	}

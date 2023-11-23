@@ -28,56 +28,69 @@ func NewHandler(s storage.Storage) *Handler {
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.POST(updateURL, logger.LogRequest(), h.handleUpdate)
+	r.POST("/update", logger.LogRequest(), h.handleJsonUpdate)
 	r.GET(updateURL, h.handleNotAllowed)
 	r.GET("/value/:metricType/:metricName", logger.LogResponse(), h.handleGetValue)
-	r.POST("/value", logger.LogResponse(), h.handleJsonGetValue)
+	r.POST("/value/", logger.LogRequest(), h.handleJsonGetValue)
 	r.GET("/", logger.LogResponse(), h.handleGetAllValues)
+}
+
+func (h *Handler) handleJsonUpdate(c *gin.Context) {
+	var metricType string
+	var metricName string
+	var metricValue any
+	var metrics metrics.Metrics
+	if err := c.ShouldBindJSON(&metrics); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request: malformed JSON"})
+		return
+	}
+
+	metricName = metrics.ID
+	metricType = metrics.MType
+
+	switch metricType {
+	case "gauge":
+		metricValue = *metrics.Value
+	case "counter":
+		metricValue = *metrics.Delta
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request: metricType should be gauge or counter"})
+		return
+	}
+
+	if err := h.Storage.Update(metricName, storage.Metric{Type: storage.MetricType(metricType),
+		Value: metricValue}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating metric"})
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
 
 func (h *Handler) handleUpdate(c *gin.Context) {
 	var metricType string
 	var metricName string
 	var metricValue any
-	if c.ContentType() == "application/json" {
-		var metrics metrics.Metrics
-		if err := c.ShouldBindJSON(&metrics); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request: malformed JSON"})
-			return
-		}
 
-		metricName = metrics.ID
-		metricType = metrics.MType
+	metricType = c.Param(metricTypeStr)
+	metricName = c.Param(metricNameStr)
+	metricValueParam := c.Param("metricValue")
+	fmt.Println(metricType, metricName, metricValueParam)
 
-		switch metricType {
-		case "gauge":
-			metricValue = *metrics.Value
-		case "counter":
-			metricValue = *metrics.Delta
-		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request: metricType should be gauge or counter"})
-			return
-		}
-	} else {
-		metricType = c.Param(metricTypeStr)
-		metricName = c.Param(metricNameStr)
-		metricValueParam := c.Param("metricValue")
-		fmt.Println(metricType, metricName, metricValueParam)
+	var err error
+	switch metricType {
+	case "gauge":
+		metricValue, err = strconv.ParseFloat(metricValueParam, 64)
+	case "counter":
+		metricValue, err = strconv.ParseInt(metricValueParam, 10, 64)
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
+		return
+	}
 
-		var err error
-		switch metricType {
-		case "gauge":
-			metricValue, err = strconv.ParseFloat(metricValueParam, 64)
-		case "counter":
-			metricValue, err = strconv.ParseInt(metricValueParam, 10, 64)
-		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
-			return
-		}
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
-			return
-		}
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
+		return
 	}
 	if err := h.Storage.Update(metricName, storage.Metric{Type: storage.MetricType(metricType),
 		Value: metricValue}); err != nil {
@@ -98,7 +111,7 @@ func (h *Handler) handleJsonGetValue(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	value, found := h.Storage.Get(metrics.ID)
+	value, found := h.Storage.Get(metrics.ID, metrics.MType)
 	if !found || string(value.Type) != metrics.MType {
 		c.Status(http.StatusNotFound)
 		return
@@ -127,7 +140,7 @@ func (h *Handler) handleGetValue(c *gin.Context) {
 	metricType := c.Param(metricTypeStr)
 	metricName := c.Param(metricNameStr)
 
-	value, found := h.Storage.Get(metricName)
+	value, found := h.Storage.Get(metricName, metricType)
 	if !found || string(value.Type) != metricType {
 		c.Status(http.StatusNotFound)
 		return
@@ -143,7 +156,9 @@ func (h *Handler) handleGetAllValues(c *gin.Context) {
 
 	htmlResponse.WriteString("<html><body>")
 	for name, metric := range values {
-		htmlResponse.WriteString(fmt.Sprintf("<p>%s (%s): %v</p>", name, metric.Type, metric.Value))
+		metricTypeStr := string(metric.Type)
+		metricName := strings.TrimSuffix(name, metricTypeStr)
+		htmlResponse.WriteString(fmt.Sprintf("<p>%s (%s): %v</p>", metricName, metric.Type, metric.Value))
 	}
 	htmlResponse.WriteString("</body></html>")
 

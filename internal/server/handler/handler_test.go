@@ -16,7 +16,7 @@ func (ms *mockStorage) Update(name string, metric storage.Metric) error {
 	return nil
 }
 
-func (ms *mockStorage) Get(name string) (storage.Metric, bool) {
+func (ms *mockStorage) Get(name string, metricType string) (storage.Metric, bool) {
 	return storage.Metric{}, false
 }
 
@@ -57,12 +57,6 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			"/update/counter/test/123.3",
 			http.StatusBadRequest,
 		},
-		/*{
-			"Valid get value request",
-			http.MethodGet,
-			"/value/gauge/test",
-			http.StatusOK,
-		},*/
 		{
 			"Not found get value",
 			http.MethodGet,
