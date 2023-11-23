@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,7 @@ func (ms *mockStorage) Get(name string, metricType string) (storage.Metric, bool
 
 func (ms *mockStorage) GetAll() map[string]storage.Metric {
 	return map[string]storage.Metric{
-		"test": {Type: "gauge", Value: 123},
+		"test": {Type: constants.Gauge, Value: 123},
 	}
 }
 

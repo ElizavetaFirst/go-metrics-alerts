@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/metrics"
 	"github.com/pkg/errors"
@@ -14,9 +15,13 @@ import (
 )
 
 const (
-	contentTypeStr = "Content-Type"
-	textPlainStr   = "text/plain"
-	maxErrors      = 1000
+	contentTypeStr  = "Content-Type"
+	textPlainStr    = "text/plain"
+	maxErrors       = 1000
+	maxTimeout      = 30
+	cantSendUpdate  = "can't send update request"
+	cantCloseBody   = "can't close update request resp.Body"
+	updateReqFormat = "http://%s/update"
 )
 
 type (
@@ -52,7 +57,7 @@ func (u *Uploader) Run() {
 	errorCount := 0
 	for range ticker.C {
 		for {
-			if err := u.SendGaugeMetricsJson(u.gaugeMetricsFunc()); err != nil {
+			if err := u.SendGaugeMetricsJSON(u.gaugeMetricsFunc()); err != nil {
 				logger.GetLogger().Warn("SendGaugeMetricsJson return error", zap.Error(err))
 				errorCount++
 				if errorCount >= maxErrors {
@@ -61,7 +66,7 @@ func (u *Uploader) Run() {
 				}
 				continue
 			}
-			if err := u.SendCounterMetricsJson(u.counterMetricsFunc()); err != nil {
+			if err := u.SendCounterMetricsJSON(u.counterMetricsFunc()); err != nil {
 				logger.GetLogger().Warn("SendCounterMetricsJson return error", zap.Error(err))
 				errorCount++
 				if errorCount >= maxErrors {
@@ -77,16 +82,16 @@ func (u *Uploader) Run() {
 
 func (u *Uploader) sendMetrics(url string) error {
 	client := &http.Client{
-		Timeout: time.Second * 30,
+		Timeout: time.Second * maxTimeout,
 	}
 	req, _ := http.NewRequest(http.MethodPost, url, nil)
 	req.Header.Set(contentTypeStr, textPlainStr)
 	resp, err := client.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "can't send update request")
+		return errors.Wrap(err, cantSendUpdate)
 	}
 	if err = resp.Body.Close(); err != nil {
-		return errors.Wrap(err, "can't close update request resp.Body")
+		return errors.Wrap(err, cantCloseBody)
 	}
 	return nil
 }
@@ -111,8 +116,10 @@ func (u *Uploader) SendCounterMetrics(metrics map[string]int64) error {
 	return nil
 }
 
-func (u *Uploader) sendMetricsJson(url string, metrics metrics.Metrics) error {
-	client := &http.Client{}
+func (u *Uploader) sendMetricsJSON(url string, metrics metrics.Metrics) error {
+	client := &http.Client{
+		Timeout: time.Second * maxTimeout,
+	}
 
 	metricsJSON, err := json.Marshal(metrics)
 	if err != nil {
@@ -123,40 +130,42 @@ func (u *Uploader) sendMetricsJson(url string, metrics metrics.Metrics) error {
 	req.Header.Set(contentTypeStr, "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "can't send update request")
+		return errors.Wrap(err, cantSendUpdate)
 	}
 	if err = resp.Body.Close(); err != nil {
-		return errors.Wrap(err, "can't close update request resp.Body")
+		return errors.Wrap(err, cantCloseBody)
 	}
 	return nil
 }
 
-func (u *Uploader) SendGaugeMetricsJson(metricsMap map[string]float64) error {
+func (u *Uploader) SendGaugeMetricsJSON(metricsMap map[string]float64) error {
 	for k, v := range metricsMap {
+		v := v
 		metric := metrics.Metrics{
 			ID:    k,
-			MType: "gauge",
+			MType: constants.Gauge,
 			Value: &v,
 		}
 
-		url := fmt.Sprintf("http://%s/update", u.addr)
-		if err := u.sendMetricsJson(url, metric); err != nil {
+		url := fmt.Sprintf(updateReqFormat, u.addr)
+		if err := u.sendMetricsJSON(url, metric); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (u *Uploader) SendCounterMetricsJson(metricsMap map[string]int64) error {
+func (u *Uploader) SendCounterMetricsJSON(metricsMap map[string]int64) error {
 	for k, v := range metricsMap {
+		v := v
 		metric := metrics.Metrics{
 			ID:    k,
-			MType: "counter",
+			MType: constants.Counter,
 			Delta: &v,
 		}
 
-		url := fmt.Sprintf("http://%s/update", u.addr)
-		if err := u.sendMetricsJson(url, metric); err != nil {
+		url := fmt.Sprintf(updateReqFormat, u.addr)
+		if err := u.sendMetricsJSON(url, metric); err != nil {
 			return err
 		}
 	}

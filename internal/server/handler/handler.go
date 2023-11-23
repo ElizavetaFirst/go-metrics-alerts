@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/metrics"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
@@ -28,14 +29,14 @@ func NewHandler(s storage.Storage) *Handler {
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.POST(updateURL, logger.LogRequest(), h.handleUpdate)
-	r.POST("/update", logger.LogRequest(), h.handleJsonUpdate)
+	r.POST("/update", logger.LogRequest(), h.handleJSONUpdate)
 	r.GET(updateURL, h.handleNotAllowed)
 	r.GET("/value/:metricType/:metricName", logger.LogResponse(), h.handleGetValue)
-	r.POST("/value/", logger.LogRequest(), h.handleJsonGetValue)
+	r.POST("/value/", logger.LogRequest(), h.handleJSONGetValue)
 	r.GET("/", logger.LogResponse(), h.handleGetAllValues)
 }
 
-func (h *Handler) handleJsonUpdate(c *gin.Context) {
+func (h *Handler) handleJSONUpdate(c *gin.Context) {
 	var metricType string
 	var metricName string
 	var metricValue any
@@ -49,9 +50,9 @@ func (h *Handler) handleJsonUpdate(c *gin.Context) {
 	metricType = metrics.MType
 
 	switch metricType {
-	case "gauge":
+	case constants.Gauge:
 		metricValue = *metrics.Value
-	case "counter":
+	case constants.Counter:
 		metricValue = *metrics.Delta
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request: metricType should be gauge or counter"})
@@ -79,9 +80,9 @@ func (h *Handler) handleUpdate(c *gin.Context) {
 
 	var err error
 	switch metricType {
-	case "gauge":
+	case constants.Gauge:
 		metricValue, err = strconv.ParseFloat(metricValueParam, 64)
-	case "counter":
+	case constants.Counter:
 		metricValue, err = strconv.ParseInt(metricValueParam, 10, 64)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
@@ -105,7 +106,7 @@ func (h *Handler) handleNotAllowed(c *gin.Context) {
 	c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Method Not Allowed"})
 }
 
-func (h *Handler) handleJsonGetValue(c *gin.Context) {
+func (h *Handler) handleJSONGetValue(c *gin.Context) {
 	var metrics metrics.Metrics
 	if err := c.ShouldBindJSON(&metrics); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -124,7 +125,7 @@ func (h *Handler) handleJsonGetValue(c *gin.Context) {
 			return
 		}
 		metrics.Delta = &delta
-	} else if metrics.MType == "gauge" {
+	} else if metrics.MType == constants.Gauge {
 		val, ok := value.Value.(float64)
 		if !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data type for Value"})

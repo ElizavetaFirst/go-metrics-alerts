@@ -3,12 +3,14 @@ package storage
 import (
 	"fmt"
 	"testing"
+
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 )
 
 func TestGetGauge(t *testing.T) {
 	ms := NewMemStorage()
 
-	_, ok := ms.Get("nonexistent", "gauge")
+	_, ok := ms.Get("nonexistent", constants.Gauge)
 	if ok == true {
 		t.Errorf("expected false for nonexistent metric, got %v", ok)
 	}
@@ -21,7 +23,7 @@ func TestGetGauge(t *testing.T) {
 		fmt.Printf("can't update testMetric %v", err)
 	}
 
-	metric, ok := ms.Get("testMetric", "gauge")
+	metric, ok := ms.Get("testMetric", constants.Gauge)
 	if ok == false {
 		t.Errorf("expected true for existent metric, got %v", ok)
 	} else if metric.Value != 23.5 {
@@ -32,7 +34,7 @@ func TestGetGauge(t *testing.T) {
 func TestGetCounter(t *testing.T) {
 	ms := NewMemStorage()
 
-	_, ok := ms.Get("nonexistent", "counter")
+	_, ok := ms.Get("nonexistent", constants.Counter)
 	if ok == true {
 		t.Errorf("expected false for nonexistent metric, got %v", ok)
 	}
@@ -53,7 +55,7 @@ func TestGetCounter(t *testing.T) {
 		fmt.Printf("can't update testMetric %v", err)
 	}
 
-	metric, ok := ms.Get("testMetric", "counter")
+	metric, ok := ms.Get("testMetric", constants.Counter)
 	if ok == false {
 		t.Errorf("expected true for existent metric, got %v", ok)
 	} else if metric.Value != int64(10) {

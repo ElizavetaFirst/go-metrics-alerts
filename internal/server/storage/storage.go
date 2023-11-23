@@ -4,13 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 )
 
 type MetricType string
 
 const (
-	Gauge   MetricType = "gauge"
-	Counter MetricType = "counter"
+	Gauge   MetricType = constants.Gauge
+	Counter MetricType = constants.Counter
 )
 
 type Storage interface {
