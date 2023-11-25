@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/compressor"
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/handler"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -37,6 +40,16 @@ var RootCmd = &cobra.Command{
 		}
 
 		r := gin.Default()
+		r.Use(compressor.GzipGinRequestMiddleware)
+
+		r.Use(func(c *gin.Context) {
+			acceptEncoding := c.GetHeader("Accept-Encoding")
+			if strings.Contains(c.ContentType(), "application/json") ||
+				strings.Contains(c.ContentType(), "text/html") ||
+				strings.Contains(acceptEncoding, constants.Gzip) {
+				gzip.Gzip(gzip.DefaultCompression)(c)
+			}
+		})
 
 		storage := storage.NewMemStorage()
 

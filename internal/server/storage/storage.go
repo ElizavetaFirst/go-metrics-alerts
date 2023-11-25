@@ -31,7 +31,6 @@ func NewMemStorage() *memStorage {
 
 func (ms *memStorage) Update(metricName string, update Metric) error {
 	uniqueID := metricName + string(update.Type)
-	fmt.Println(uniqueID)
 	m, exists := ms.Data.Load(uniqueID)
 	if !exists {
 		ms.Data.Store(uniqueID, update)
