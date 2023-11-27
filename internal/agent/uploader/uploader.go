@@ -19,7 +19,6 @@ import (
 const (
 	contentTypeStr  = "Content-Type"
 	textPlainStr    = "text/plain"
-	maxErrors       = 1000
 	maxTimeout      = 30
 	cantSendUpdate  = "can't send update request"
 	cantCloseBody   = "can't close update request resp.Body"
@@ -62,7 +61,7 @@ func (u *Uploader) Run() {
 			if err := u.SendGaugeMetricsJSON(u.gaugeMetricsFunc()); err != nil {
 				logger.GetLogger().Warn("SendGaugeMetricsJson return error", zap.Error(err))
 				errorCount++
-				if errorCount >= maxErrors {
+				if errorCount >= constants.MaxErrors {
 					u.errorChan <- err
 					return
 				}
@@ -71,7 +70,7 @@ func (u *Uploader) Run() {
 			if err := u.SendCounterMetricsJSON(u.counterMetricsFunc()); err != nil {
 				logger.GetLogger().Warn("SendCounterMetricsJson return error", zap.Error(err))
 				errorCount++
-				if errorCount >= maxErrors {
+				if errorCount >= constants.MaxErrors {
 					u.errorChan <- err
 					return
 				}

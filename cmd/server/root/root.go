@@ -2,17 +2,20 @@ package root
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/compressor"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/handler"
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/saver"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var RootCmd = &cobra.Command{
@@ -38,6 +41,18 @@ var RootCmd = &cobra.Command{
 		if len(parts) < 2 || parts[1] == "" {
 			return fmt.Errorf("you must provide a non-empty port number")
 		}
+		storeInterval, err := cmd.Flags().GetInt("storeInterval")
+		if err != nil {
+			return errors.Wrap(err, "can't get storeInterval flag")
+		}
+		fileStoragePath, err := cmd.Flags().GetString("fileStoragePath")
+		if err != nil {
+			return errors.Wrap(err, "can't get fileStoragePath flag")
+		}
+		restore, err := cmd.Flags().GetBool("restore")
+		if err != nil {
+			return errors.Wrap(err, "can't get restore flag")
+		}
 
 		r := gin.Default()
 		r.Use(compressor.GzipGinRequestMiddleware)
@@ -54,8 +69,15 @@ var RootCmd = &cobra.Command{
 		storage := storage.NewMemStorage()
 
 		handler := handler.NewHandler(storage)
-
 		handler.RegisterRoutes(r)
+
+		saver := saver.NewSaver(storeInterval, fileStoragePath, restore, storage)
+		go func() {
+			if err := saver.Run(); err != nil {
+				logger.GetLogger().Error("Error running saver", zap.Error(err))
+				os.Exit(0)
+			}
+		}()
 
 		err = r.Run(addr)
 		if err != nil {

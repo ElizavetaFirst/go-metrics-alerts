@@ -27,6 +27,8 @@ func (ms *mockStorage) GetAll() map[string]storage.Metric {
 	}
 }
 
+func (ms *mockStorage) SetAll(metrics map[string]storage.Metric) {}
+
 func TestHandler_ServeHTTP(t *testing.T) {
 	tests := []struct {
 		name           string

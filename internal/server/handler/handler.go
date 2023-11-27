@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -119,6 +120,7 @@ func (h *Handler) handleJSONGetValue(c *gin.Context) {
 	}
 
 	if metrics.MType == "counter" {
+		fmt.Println(reflect.TypeOf(value.Value).Kind() == reflect.Int64)
 		delta, ok := value.Value.(int64)
 		if !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data type for Delta"})

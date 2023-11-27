@@ -3,6 +3,7 @@ module github.com/ElizavetaFirst/go-metrics-alerts
 go 1.21.0
 
 require (
+	github.com/gin-contrib/gzip v0.0.6
 	github.com/gin-gonic/gin v1.9.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.0

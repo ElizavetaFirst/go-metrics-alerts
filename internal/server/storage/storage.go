@@ -19,6 +19,7 @@ type Storage interface {
 	Update(metricName string, update Metric) error
 	Get(metricName string, metricType string) (Metric, bool)
 	GetAll() map[string]Metric
+	SetAll(metrics map[string]Metric)
 }
 
 type memStorage struct {
@@ -84,4 +85,15 @@ func (ms *memStorage) GetAll() map[string]Metric {
 		return true
 	})
 	return result
+}
+
+func (ms *memStorage) SetAll(metrics map[string]Metric) {
+	for key, metric := range metrics {
+		if metric.Type == "counter" && metric.Value != nil {
+			if value, ok := metric.Value.(float64); ok {
+				metric.Value = int64(value)
+			}
+		}
+		ms.Data.Store(key, metric)
+	}
 }
