@@ -7,7 +7,6 @@ import (
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/agent/collector"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/agent/uploader"
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -24,9 +23,6 @@ var RootCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger.Init()
-		defer logger.Sync()
-
 		addr, err := cmd.Flags().GetString("addr")
 		if err != nil {
 			return errors.Wrap(err, "can't get addr flag")

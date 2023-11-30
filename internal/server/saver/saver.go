@@ -10,9 +10,7 @@ import (
 	"time"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
-	"go.uber.org/zap"
 )
 
 const failedCloseFile = "Failed to close file: %v"
@@ -44,7 +42,7 @@ func (s *Saver) getAndSaveMetrics() error {
 	}
 
 	if err := saveMetricsToFile(metrics, s.fileStoragePath); err != nil {
-		logger.GetLogger().Warn("can't save metrics to file", zap.String("fileStoragePath", s.fileStoragePath))
+		fmt.Printf("can't save metrics to file %s", s.fileStoragePath)
 		return err
 	}
 	return nil
@@ -57,7 +55,7 @@ func (s *Saver) Run() error {
 	go func() {
 		for range c {
 			if err := s.getAndSaveMetrics(); err != nil {
-				logger.GetLogger().Error(fmt.Sprintf("can't save metrics on interrupt signal: %v", err))
+				fmt.Printf("can't save metrics on interrupt signal: %v", err)
 			}
 			os.Exit(0)
 		}
@@ -68,7 +66,6 @@ func (s *Saver) Run() error {
 		if err != nil {
 			return fmt.Errorf("cannot load metrics from file: %w", err)
 		}
-		fmt.Println("load", metrics)
 		s.storage.SetAll(metrics)
 	}
 
@@ -78,7 +75,7 @@ func (s *Saver) Run() error {
 	for range ticker.C {
 		err := s.getAndSaveMetrics()
 		if err != nil {
-			logger.GetLogger().Error(fmt.Sprintf("can't save metrics on timer tick: %v", err))
+			fmt.Printf("can't save metrics on timer tick: %v", err)
 			errorCount++
 		}
 		if errorCount > constants.MaxErrors {
@@ -87,7 +84,7 @@ func (s *Saver) Run() error {
 	}
 
 	if err := s.getAndSaveMetrics(); err != nil {
-		logger.GetLogger().Error(fmt.Sprintf("can't save metrics when closing Saver: %v", err))
+		fmt.Printf("can't save metrics when closing Saver: %v", err)
 	}
 	return nil
 }
@@ -102,7 +99,7 @@ func saveMetricsToFile(metrics map[string]storage.Metric, filePath string) error
 	defer func() {
 		closeErr := file.Close()
 		if closeErr != nil {
-			logger.GetLogger().Error(fmt.Sprintf(failedCloseFile, closeErr))
+			fmt.Printf(failedCloseFile, closeErr)
 		}
 	}()
 
@@ -129,7 +126,7 @@ func loadMetricsFromFile(filePath string) (map[string]storage.Metric, error) {
 	defer func() {
 		closeErr := file.Close()
 		if closeErr != nil {
-			logger.GetLogger().Error(fmt.Sprintf(failedCloseFile, closeErr))
+			fmt.Printf(failedCloseFile, closeErr)
 		}
 	}()
 

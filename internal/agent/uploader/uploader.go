@@ -10,10 +10,8 @@ import (
 	"time"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/metrics"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 )
 
 const (
@@ -59,7 +57,7 @@ func (u *Uploader) Run() {
 	for range ticker.C {
 		for {
 			if err := u.SendGaugeMetricsJSON(u.gaugeMetricsFunc()); err != nil {
-				logger.GetLogger().Warn("SendGaugeMetricsJson return error", zap.Error(err))
+				fmt.Printf("SendGaugeMetricsJson return error %v", err)
 				errorCount++
 				if errorCount >= constants.MaxErrors {
 					u.errorChan <- err
@@ -68,7 +66,7 @@ func (u *Uploader) Run() {
 				continue
 			}
 			if err := u.SendCounterMetricsJSON(u.counterMetricsFunc()); err != nil {
-				logger.GetLogger().Warn("SendCounterMetricsJson return error", zap.Error(err))
+				fmt.Printf("SendCounterMetricsJson return error %v", err)
 				errorCount++
 				if errorCount >= constants.MaxErrors {
 					u.errorChan <- err
