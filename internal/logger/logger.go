@@ -17,16 +17,15 @@ func InitLogger() gin.HandlerFunc {
 	var err error
 	log, err = zap.NewProduction()
 	if err != nil {
-		panic(fmt.Sprintf("can't initialize zap logger: %v", err))
+		fmt.Printf("can't initialize zap logger: %v", err)
 	}
 
 	return func(c *gin.Context) {
 		c.Set(logger, log)
 		c.Next()
 
-		// Call Sync at the end of every request
 		if err := log.Sync(); err != nil && (!errors.Is(err, syscall.EBADF) && !errors.Is(err, syscall.ENOTTY)) {
-			panic(fmt.Sprintf("can't sync zap logger: %v", err))
+			fmt.Printf("can't sync zap logger: %v", err)
 		}
 	}
 }
