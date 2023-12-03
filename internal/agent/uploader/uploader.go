@@ -2,10 +2,8 @@ package uploader
 
 import (
 	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
@@ -115,55 +113,20 @@ func (u *Uploader) SendCounterMetrics(metrics map[string]int64) error {
 	return nil
 }
 
-func (u *Uploader) sendMetricsJSON(url string, metrics metrics.Metrics) error {
-	client := &http.Client{
-		Timeout: time.Second * maxTimeout,
+func (u *Uploader) sendMetricsJSON(url string, metrics []byte) error {
+	client := &ClientWithMiddleware{
+		HTTPClient: &http.Client{
+			Timeout: time.Second * maxTimeout,
+		},
 	}
-
-	metricsJSON, err := json.Marshal(metrics)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(metrics))
 	if err != nil {
-		return errors.Wrap(err, "can't marshal metrics to JSON")
+		return errors.Wrap(err, "can't make request")
 	}
-
-	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(metricsJSON))
-	req.Header.Set(contentTypeStr, "application/json")
-	req.Header.Set("Accept-Encoding", constants.Gzip)
-	resp, err := client.Do(req)
+	_, err = client.Do(req)
 	if err != nil {
 		return errors.Wrap(err, cantSendUpdate)
 	}
-	defer func() {
-		closeErr := resp.Body.Close()
-		if closeErr != nil {
-			closeErr = errors.Wrap(closeErr, "Failed to close the body of the response")
-			if err == nil {
-				err = closeErr
-			}
-		}
-	}()
-
-	var reader io.ReadCloser
-	defer func() {
-		closeErr := reader.Close()
-		if closeErr != nil {
-			closeErr = errors.Wrap(closeErr, "Failed to close io.ReadCloser")
-			if err == nil {
-				err = closeErr
-			}
-		}
-	}()
-
-	switch resp.Header.Get("Content-Encoding") {
-	case constants.Gzip:
-		reader, err = gzip.NewReader(resp.Body)
-		if err != nil {
-			return errors.Wrap(err, "can't create gzip.NewReader")
-		}
-	default:
-		reader = resp.Body
-		fmt.Println(reader)
-	}
-
 	return nil
 }
 
@@ -177,7 +140,11 @@ func (u *Uploader) SendGaugeMetricsJSON(metricsMap map[string]float64) error {
 		}
 
 		url := fmt.Sprintf(updateReqFormat, u.addr)
-		if err := u.sendMetricsJSON(url, metric); err != nil {
+		metricsJSON, err := json.Marshal(metric)
+		if err != nil {
+			return errors.Wrap(err, "can't marshal metrics to JSON")
+		}
+		if err := u.sendMetricsJSON(url, metricsJSON); err != nil {
 			return err
 		}
 	}
@@ -193,8 +160,12 @@ func (u *Uploader) SendCounterMetricsJSON(metricsMap map[string]int64) error {
 			Delta: &v,
 		}
 
+		metricsJSON, err := json.Marshal(metric)
+		if err != nil {
+			return errors.Wrap(err, "can't marshal metrics to JSON")
+		}
 		url := fmt.Sprintf(updateReqFormat, u.addr)
-		if err := u.sendMetricsJSON(url, metric); err != nil {
+		if err := u.sendMetricsJSON(url, metricsJSON); err != nil {
 			return err
 		}
 	}
