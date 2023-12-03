@@ -20,23 +20,13 @@ func (c *ClientWithMiddleware) Do(req *http.Request) (*http.Response, error) {
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "can't do client response")
 	}
-
-	defer func() {
-		closeErr := resp.Body.Close()
-		if closeErr != nil {
-			closeErr = errors.Wrap(closeErr, "Failed to close the body of the response")
-			if err == nil {
-				err = closeErr
-			}
-		}
-	}()
 
 	var reader io.ReadCloser
 	switch resp.Header.Get("Content-Encoding") {
 	case constants.Gzip:
-		reader, err = gzip.NewReader(resp.Body)
+		_, err = gzip.NewReader(resp.Body)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't create gzip.NewReader")
 		}
