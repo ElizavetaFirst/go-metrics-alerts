@@ -2,6 +2,7 @@ package uploader
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -73,5 +74,39 @@ func TestUploader_SendCounterMetrics(t *testing.T) {
 
 	if err := uploader.SendCounterMetrics(counterMetrics()); err != nil {
 		fmt.Printf("SendCounterMetrics return error %v", err)
+	}
+}
+
+func TestUploader_SendGaugeMetricsJson(t *testing.T) {
+	respRecorder := httptest.NewRecorder()
+
+	req, err := http.NewRequest("GET", "http://example.com", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("Expected POST request, got %s", r.Method)
+		}
+
+		reqBody, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("Failed reading request body: %v", err)
+		}
+		if string(reqBody) != "{\"ID\":\"metric1\",\"MType\":\"Gauge\",\"Value\":0.1}" {
+			t.Fatalf("Expected JSON data did not match actual data")
+		}
+	})
+
+	handler.ServeHTTP(respRecorder, req)
+
+	if status := respRecorder.Code; status != http.StatusOK {
+		t.Errorf("Handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	expected := `{"ID":"metric1","MType":"Gauge","Value":0.1}`
+	if respRecorder.Body.String() != "{\"ID\":\"metric1\",\"MType\":\"Gauge\",\"Value\":0.1}" {
+		t.Errorf("Handler returned unexpected body: got %v want %v", respRecorder.Body.String(), expected)
 	}
 }

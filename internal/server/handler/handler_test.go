@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
@@ -95,5 +97,41 @@ func TestHandler_ServeHTTP(t *testing.T) {
 
 			assert.Equal(t, tt.expectedStatus, rec.Code)
 		})
+	}
+}
+
+func TestSendCounterMetricsJson(t *testing.T) {
+	mockServer := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Error("Expected POST request, got ", r.Method)
+		}
+
+		expectedURL := "/metrics"
+		if r.URL.EscapedPath() != expectedURL {
+			t.Errorf("Wrong URL: got %v want %v", r.URL.EscapedPath(), expectedURL)
+		}
+
+		reqBody, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("Failed reading request body: %v", err)
+		}
+		expectedBody := `{"test":123}`
+		if string(reqBody) != expectedBody {
+			t.Errorf("Unexpected body: got %v want %v", reqBody, expectedBody)
+		}
+	})
+
+	req, err := http.NewRequest(http.MethodPost, "/metrics", strings.NewReader(`{"test":123}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(mockServer)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Wrong status code: got %v want %v", status, http.StatusOK)
 	}
 }
