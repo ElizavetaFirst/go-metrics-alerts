@@ -21,4 +21,4 @@ jobs:
           file: ./coverage.txt
           fail_ci_if_error: true
           ignore: 
-            - ".*_test\.go"
+            - ".*_test.go"
