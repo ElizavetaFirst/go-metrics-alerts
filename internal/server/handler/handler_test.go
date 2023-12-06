@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -111,7 +111,7 @@ func TestSendCounterMetricsJson(t *testing.T) {
 			t.Errorf("Wrong URL: got %v want %v", r.URL.EscapedPath(), expectedURL)
 		}
 
-		reqBody, err := ioutil.ReadAll(r.Body)
+		reqBody, err := io.ReadAll(r.Body)
 		if err != nil {
 			t.Fatalf("Failed reading request body: %v", err)
 		}
@@ -127,7 +127,7 @@ func TestSendCounterMetricsJson(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(mockServer)
+	handler := mockServer
 
 	handler.ServeHTTP(rr, req)
 
