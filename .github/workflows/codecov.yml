@@ -20,5 +20,3 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.txt
           fail_ci_if_error: true
-          ignore: 
-            - ".*_test.go"
