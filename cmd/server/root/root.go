@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/db"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/saver"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/webserver"
@@ -37,11 +38,25 @@ var RootCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "can't get restore flag")
 		}
+		databaseDSN, err := cmd.Flags().GetString("databaseDSN")
+		if err != nil {
+			return errors.Wrap(err, "can't get restore flag")
+		}
 
 		storage := storage.NewMemStorage()
 		saver := saver.NewSaver(storeInterval, fileStoragePath, restore, storage)
+		database, err := db.NewDB(databaseDSN)
+		//database, err := db.NewDB("postgres://unknown:unknown@localhost:5432/praktikum?sslmode=disable")
+		if err != nil {
+			return errors.Wrap(err, "can't init db")
+		}
+		defer func() {
+			if err := database.Close(); err != nil {
+				errors.Wrap(err, "failed to close the database")
+			}
+		}()
 
-		server := webserver.NewWebserver(storage)
+		server := webserver.NewWebserver(storage, database)
 
 		go func() {
 			if err := saver.Run(); err != nil {

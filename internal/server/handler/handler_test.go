@@ -77,7 +77,7 @@ func TestHandler_ServeHTTP(t *testing.T) {
 	}
 
 	ms := &mockStorage{}
-	h := NewHandler(ms)
+	h := NewHandler(ms, nil)
 
 	r := gin.Default()
 	h.RegisterRoutes(r)

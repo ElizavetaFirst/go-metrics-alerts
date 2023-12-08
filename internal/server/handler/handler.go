@@ -10,6 +10,7 @@ import (
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/metrics"
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/db"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
 )
@@ -22,19 +23,23 @@ const (
 
 type Handler struct {
 	Storage storage.Storage
+	DB      *db.DB
 }
 
-func NewHandler(s storage.Storage) *Handler {
-	return &Handler{Storage: s}
+func NewHandler(s storage.Storage, DB *db.DB) *Handler {
+	return &Handler{
+		Storage: s,
+		DB:      DB}
 }
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.POST(updateURL, logger.LogRequest(), h.handleUpdate)
 	r.POST("/update", logger.LogRequest(), h.handleJSONUpdate)
+	r.POST("/value/", logger.LogRequest(), h.handleJSONGetValue)
 	r.GET(updateURL, h.handleNotAllowed)
 	r.GET("/value/:metricType/:metricName", logger.LogResponse(), h.handleGetValue)
-	r.POST("/value/", logger.LogRequest(), h.handleJSONGetValue)
 	r.GET("/", logger.LogResponse(), h.handleGetAllValues)
+	r.GET("/ping", logger.LogResponse(), h.handlePing)
 }
 
 func (h *Handler) handleJSONUpdate(c *gin.Context) {
@@ -166,4 +171,15 @@ func (h *Handler) handleGetAllValues(c *gin.Context) {
 	htmlResponse.WriteString("</body></html>")
 
 	c.Data(http.StatusOK, "text/html", []byte(htmlResponse.String()))
+}
+
+func (h *Handler) handlePing(c *gin.Context) {
+	err := h.DB.Ping()
+	if err != nil {
+		fmt.Printf("Error on DB Ping: %s\n", err.Error())
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
