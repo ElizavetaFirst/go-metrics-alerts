@@ -33,3 +33,14 @@ func TestCollector_GetCounterMetrics(t *testing.T) {
 		t.Errorf("Expected %+v, Got %+v", collector.CounterMetrics, got)
 	}
 }
+
+func TestNewCollector(t *testing.T) {
+	errorChan := make(chan error)
+	c := NewCollector(10*time.Second, errorChan)
+	if c.pollInterval != 10*time.Second {
+		t.Errorf("Expected poll interval to be 10s, but got %v", c.pollInterval)
+	}
+	if c.errorChan != errorChan {
+		t.Errorf("Expected error channel to be %v, but got %v", errorChan, c.errorChan)
+	}
+}

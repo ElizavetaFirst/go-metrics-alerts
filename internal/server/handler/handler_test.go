@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -16,15 +19,17 @@ func (ms *mockStorage) Update(name string, metric storage.Metric) error {
 	return nil
 }
 
-func (ms *mockStorage) Get(name string) (storage.Metric, bool) {
+func (ms *mockStorage) Get(name string, metricType string) (storage.Metric, bool) {
 	return storage.Metric{}, false
 }
 
 func (ms *mockStorage) GetAll() map[string]storage.Metric {
 	return map[string]storage.Metric{
-		"test": {Type: "gauge", Value: 123},
+		"test": {Type: constants.Gauge, Value: 123},
 	}
 }
+
+func (ms *mockStorage) SetAll(metrics map[string]storage.Metric) {}
 
 func TestHandler_ServeHTTP(t *testing.T) {
 	tests := []struct {
@@ -57,12 +62,6 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			"/update/counter/test/123.3",
 			http.StatusBadRequest,
 		},
-		/*{
-			"Valid get value request",
-			http.MethodGet,
-			"/value/gauge/test",
-			http.StatusOK,
-		},*/
 		{
 			"Not found get value",
 			http.MethodGet,
@@ -98,5 +97,41 @@ func TestHandler_ServeHTTP(t *testing.T) {
 
 			assert.Equal(t, tt.expectedStatus, rec.Code)
 		})
+	}
+}
+
+func TestSendCounterMetricsJson(t *testing.T) {
+	mockServer := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Error("Expected POST request, got ", r.Method)
+		}
+
+		expectedURL := "/metrics"
+		if r.URL.EscapedPath() != expectedURL {
+			t.Errorf("Wrong URL: got %v want %v", r.URL.EscapedPath(), expectedURL)
+		}
+
+		reqBody, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("Failed reading request body: %v", err)
+		}
+		expectedBody := `{"test":123}`
+		if string(reqBody) != expectedBody {
+			t.Errorf("Unexpected body: got %v want %v", reqBody, expectedBody)
+		}
+	})
+
+	req, err := http.NewRequest(http.MethodPost, "/metrics", strings.NewReader(`{"test":123}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := mockServer
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Wrong status code: got %v want %v", status, http.StatusOK)
 	}
 }

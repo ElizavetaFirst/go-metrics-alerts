@@ -4,19 +4,22 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 )
 
 type MetricType string
 
 const (
-	Gauge   MetricType = "gauge"
-	Counter MetricType = "counter"
+	Gauge   MetricType = constants.Gauge
+	Counter MetricType = constants.Counter
 )
 
 type Storage interface {
 	Update(metricName string, update Metric) error
-	Get(metricName string) (Metric, bool)
+	Get(metricName string, metricType string) (Metric, bool)
 	GetAll() map[string]Metric
+	SetAll(metrics map[string]Metric)
 }
 
 type memStorage struct {
@@ -28,17 +31,15 @@ func NewMemStorage() *memStorage {
 }
 
 func (ms *memStorage) Update(metricName string, update Metric) error {
-	m, exists := ms.Data.Load(metricName)
+	uniqueID := metricName + string(update.Type)
+	m, exists := ms.Data.Load(uniqueID)
 	if !exists {
-		ms.Data.Store(metricName, update)
+		ms.Data.Store(uniqueID, update)
 		return nil
 	}
 	metric, ok := m.(Metric)
 	if !ok {
 		return errors.New("can't get metric")
-	}
-	if metric.Type != update.Type {
-		return nil
 	}
 
 	switch metric.Type {
@@ -54,12 +55,13 @@ func (ms *memStorage) Update(metricName string, update Metric) error {
 		}
 	}
 
-	ms.Data.Store(metricName, metric)
+	ms.Data.Store(uniqueID, metric)
 	return nil
 }
 
-func (ms *memStorage) Get(metricName string) (Metric, bool) {
-	metric, exists := ms.Data.Load(metricName)
+func (ms *memStorage) Get(metricName string, metricType string) (Metric, bool) {
+	uniqueID := metricName + metricType
+	metric, exists := ms.Data.Load(uniqueID)
 	if exists {
 		return metric.(Metric), exists
 	}
@@ -83,4 +85,15 @@ func (ms *memStorage) GetAll() map[string]Metric {
 		return true
 	})
 	return result
+}
+
+func (ms *memStorage) SetAll(metrics map[string]Metric) {
+	for key, metric := range metrics {
+		if metric.Type == "counter" && metric.Value != nil {
+			if value, ok := metric.Value.(float64); ok {
+				metric.Value = int64(value)
+			}
+		}
+		ms.Data.Store(key, metric)
+	}
 }
