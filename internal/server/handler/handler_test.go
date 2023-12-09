@@ -16,21 +16,21 @@ import (
 
 type mockStorage struct{}
 
-func (ms *mockStorage) Update(name string, metric storage.Metric) error {
+func (ms *mockStorage) Update(opts *storage.UpdateOptions) error {
 	return nil
 }
 
-func (ms *mockStorage) Get(name string, metricType string) (storage.Metric, bool) {
+func (ms *mockStorage) Get(opts *storage.GetOptions) (storage.Metric, bool) {
 	return storage.Metric{}, false
 }
 
-func (ms *mockStorage) GetAll() map[string]storage.Metric {
+func (ms *mockStorage) GetAll(opts *storage.GetAllOptions) map[string]storage.Metric {
 	return map[string]storage.Metric{
 		"test": {Type: constants.Gauge, Value: 123},
 	}
 }
 
-func (ms *mockStorage) SetAll(metrics map[string]storage.Metric) {}
+func (ms *mockStorage) SetAll(opts *storage.SetAllOptions) {}
 
 func TestHandler_ServeHTTP(t *testing.T) {
 	tests := []struct {

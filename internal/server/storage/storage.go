@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -10,16 +11,41 @@ import (
 
 type MetricType string
 
+type UpdateOptions struct {
+	//nolint:containedctx // need for compact representation
+	Context    context.Context
+	MetricName string
+	Update     Metric
+}
+
+type GetOptions struct {
+	//nolint:containedctx // need for compact representation
+	Context    context.Context
+	MetricName string
+	MetricType string
+}
+
+type GetAllOptions struct {
+	//nolint:containedctx // need for compact representation
+	Context context.Context
+}
+
+type SetAllOptions struct {
+	//nolint:containedctx // need for compact representation
+	Context context.Context
+	Metrics map[string]Metric
+}
+
 const (
 	Gauge   MetricType = constants.Gauge
 	Counter MetricType = constants.Counter
 )
 
 type Storage interface {
-	Update(metricName string, update Metric) error
-	Get(metricName string, metricType string) (Metric, bool)
-	GetAll() map[string]Metric
-	SetAll(metrics map[string]Metric)
+	Update(opts *UpdateOptions) error
+	Get(opts *GetOptions) (Metric, bool)
+	GetAll(opts *GetAllOptions) map[string]Metric
+	SetAll(opts *SetAllOptions)
 }
 
 type memStorage struct {
@@ -30,7 +56,9 @@ func NewMemStorage() *memStorage {
 	return &memStorage{}
 }
 
-func (ms *memStorage) Update(metricName string, update Metric) error {
+func (ms *memStorage) Update(opts *UpdateOptions) error {
+	metricName := opts.MetricName
+	update := opts.Update
 	uniqueID := metricName + string(update.Type)
 	m, exists := ms.Data.Load(uniqueID)
 	if !exists {
@@ -59,7 +87,9 @@ func (ms *memStorage) Update(metricName string, update Metric) error {
 	return nil
 }
 
-func (ms *memStorage) Get(metricName string, metricType string) (Metric, bool) {
+func (ms *memStorage) Get(opts *GetOptions) (Metric, bool) {
+	metricName := opts.MetricName
+	metricType := opts.MetricType
 	uniqueID := metricName + metricType
 	metric, exists := ms.Data.Load(uniqueID)
 	if exists {
@@ -68,7 +98,7 @@ func (ms *memStorage) Get(metricName string, metricType string) (Metric, bool) {
 	return Metric{}, exists
 }
 
-func (ms *memStorage) GetAll() map[string]Metric {
+func (ms *memStorage) GetAll(opts *GetAllOptions) map[string]Metric {
 	result := make(map[string]Metric)
 	ms.Data.Range(func(key, value interface{}) bool {
 		keyStr, ok := key.(string)
@@ -87,7 +117,8 @@ func (ms *memStorage) GetAll() map[string]Metric {
 	return result
 }
 
-func (ms *memStorage) SetAll(metrics map[string]Metric) {
+func (ms *memStorage) SetAll(opts *SetAllOptions) {
+	metrics := opts.Metrics
 	for key, metric := range metrics {
 		if metric.Type == "counter" && metric.Value != nil {
 			if value, ok := metric.Value.(float64); ok {

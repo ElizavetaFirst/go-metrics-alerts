@@ -65,8 +65,13 @@ func (h *Handler) handleJSONUpdate(c *gin.Context) {
 		return
 	}
 
-	if err := h.Storage.Update(metricName, storage.Metric{Type: storage.MetricType(metricType),
-		Value: metricValue}); err != nil {
+	if err := h.Storage.Update(&storage.UpdateOptions{
+		MetricName: metricName,
+		Update: storage.Metric{
+			Type:  storage.MetricType(metricType),
+			Value: metricValue,
+		},
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating metric"})
 		return
 	}
@@ -99,8 +104,13 @@ func (h *Handler) handleUpdate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
 		return
 	}
-	if err := h.Storage.Update(metricName, storage.Metric{Type: storage.MetricType(metricType),
-		Value: metricValue}); err != nil {
+	if err := h.Storage.Update(&storage.UpdateOptions{
+		MetricName: metricName,
+		Update: storage.Metric{
+			Type:  storage.MetricType(metricType),
+			Value: metricValue,
+		},
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating metric"})
 		return
 	}
@@ -118,7 +128,11 @@ func (h *Handler) handleJSONGetValue(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	value, found := h.Storage.Get(metrics.ID, metrics.MType)
+
+	value, found := h.Storage.Get(&storage.GetOptions{
+		MetricName: metrics.ID,
+		MetricType: metrics.MType,
+	})
 	if !found || string(value.Type) != metrics.MType {
 		c.Status(http.StatusNotFound)
 		return
@@ -148,7 +162,10 @@ func (h *Handler) handleGetValue(c *gin.Context) {
 	metricType := c.Param(metricTypeStr)
 	metricName := c.Param(metricNameStr)
 
-	value, found := h.Storage.Get(metricName, metricType)
+	value, found := h.Storage.Get(&storage.GetOptions{
+		MetricName: metricName,
+		MetricType: metricType,
+	})
 	if !found || string(value.Type) != metricType {
 		c.Status(http.StatusNotFound)
 		return
@@ -158,7 +175,7 @@ func (h *Handler) handleGetValue(c *gin.Context) {
 }
 
 func (h *Handler) handleGetAllValues(c *gin.Context) {
-	values := h.Storage.GetAll()
+	values := h.Storage.GetAll(&storage.GetAllOptions{})
 
 	var htmlResponse strings.Builder
 

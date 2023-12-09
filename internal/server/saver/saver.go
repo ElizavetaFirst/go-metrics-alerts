@@ -36,7 +36,7 @@ func NewSaver(storeInterval int,
 }
 
 func (s *Saver) getAndSaveMetrics() error {
-	metrics := s.storage.GetAll()
+	metrics := s.storage.GetAll(&storage.GetAllOptions{})
 	if len(metrics) == 0 {
 		return nil
 	}
@@ -66,7 +66,7 @@ func (s *Saver) Run() error {
 		if err != nil {
 			return fmt.Errorf("cannot load metrics from file: %w", err)
 		}
-		s.storage.SetAll(metrics)
+		s.storage.SetAll(&storage.SetAllOptions{Metrics: metrics})
 	}
 
 	ticker := time.NewTicker(s.storeInterval)

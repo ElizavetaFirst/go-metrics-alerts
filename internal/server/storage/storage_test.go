@@ -10,20 +10,23 @@ import (
 func TestGetGauge(t *testing.T) {
 	ms := NewMemStorage()
 
-	_, ok := ms.Get("nonexistent", constants.Gauge)
+	_, ok := ms.Get(&GetOptions{MetricName: "nonexistent", MetricType: constants.Gauge})
 	if ok == true {
 		t.Errorf("expected false for nonexistent metric, got %v", ok)
 	}
 
-	err := ms.Update("testMetric", Metric{
-		Type:  Gauge,
-		Value: 23.5,
+	err := ms.Update(&UpdateOptions{
+		MetricName: "testMetric",
+		Update: Metric{
+			Type:  Gauge,
+			Value: 23.5,
+		},
 	})
 	if err != nil {
 		fmt.Printf("can't update testMetric %v", err)
 	}
 
-	metric, ok := ms.Get("testMetric", constants.Gauge)
+	metric, ok := ms.Get(&GetOptions{MetricName: "testMetric", MetricType: constants.Gauge})
 	if ok == false {
 		t.Errorf("expected true for existent metric, got %v", ok)
 	} else if metric.Value != 23.5 {
@@ -34,28 +37,23 @@ func TestGetGauge(t *testing.T) {
 func TestGetCounter(t *testing.T) {
 	ms := NewMemStorage()
 
-	_, ok := ms.Get("nonexistent", constants.Counter)
+	_, ok := ms.Get(&GetOptions{MetricName: "nonexistent", MetricType: constants.Counter})
 	if ok == true {
 		t.Errorf("expected false for nonexistent metric, got %v", ok)
 	}
 
-	err := ms.Update("testMetric", Metric{
-		Type:  Counter,
-		Value: int64(5),
+	err := ms.Update(&UpdateOptions{
+		MetricName: "testMetric",
+		Update: Metric{
+			Type:  Counter,
+			Value: int64(10),
+		},
 	})
 	if err != nil {
 		fmt.Printf("can't update testMetric %v", err)
 	}
 
-	err = ms.Update("testMetric", Metric{
-		Type:  Counter,
-		Value: int64(5),
-	})
-	if err != nil {
-		fmt.Printf("can't update testMetric %v", err)
-	}
-
-	metric, ok := ms.Get("testMetric", constants.Counter)
+	metric, ok := ms.Get(&GetOptions{MetricName: "testMetric", MetricType: constants.Counter})
 	if ok == false {
 		t.Errorf("expected true for existent metric, got %v", ok)
 	} else if metric.Value != int64(10) {
