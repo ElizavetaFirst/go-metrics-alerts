@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 )
 
 type FakeDB struct{}
@@ -31,7 +32,7 @@ func NewDB(dataSourceName string) (*DB, error) {
 	fmt.Println(dataSourceName)
 	realDB, err := sql.Open("postgres", dataSourceName)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "can't open database")
 	}
 	return &DB{realDB}, nil
 }

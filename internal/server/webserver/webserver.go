@@ -20,9 +20,9 @@ type Webserver struct {
 
 func NewWebserver(
 	storage storage.Storage,
-	DB *db.DB,
+	db *db.DB,
 ) *Webserver {
-	router := setupRouter(storage, DB)
+	router := setupRouter(storage, db)
 
 	return &Webserver{
 		Router: router,
@@ -33,8 +33,8 @@ func (ws *Webserver) Run(addr string) error {
 	return errors.Wrap(ws.Router.Run(addr), "error while Webserver Run")
 }
 
-func setupRouter(storage storage.Storage, DB *db.DB) *gin.Engine {
-	handler := handler.NewHandler(storage, DB)
+func setupRouter(storage storage.Storage, db *db.DB) *gin.Engine {
+	handler := handler.NewHandler(storage, db)
 
 	r := gin.Default()
 	r.Use(logger.InitLogger())

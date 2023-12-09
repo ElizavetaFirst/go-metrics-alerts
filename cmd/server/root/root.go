@@ -46,13 +46,12 @@ var RootCmd = &cobra.Command{
 		storage := storage.NewMemStorage()
 		saver := saver.NewSaver(storeInterval, fileStoragePath, restore, storage)
 		database, err := db.NewDB(databaseDSN)
-		//database, err := db.NewDB("postgres://unknown:unknown@localhost:5432/praktikum?sslmode=disable")
 		if err != nil {
 			return errors.Wrap(err, "can't init db")
 		}
 		defer func() {
 			if err := database.Close(); err != nil {
-				errors.Wrap(err, "failed to close the database")
+				fmt.Printf("failed to close the database %v", err)
 			}
 		}()
 
