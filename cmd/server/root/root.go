@@ -40,7 +40,7 @@ var RootCmd = &cobra.Command{
 		}
 		databaseDSN, err := cmd.Flags().GetString("databaseDSN")
 		if err != nil {
-			return errors.Wrap(err, "can't get restore flag")
+			return errors.Wrap(err, "can't get databaseDSN")
 		}
 
 		storage := storage.NewMemStorage()

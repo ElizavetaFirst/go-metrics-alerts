@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/db"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -74,10 +75,22 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			"/",
 			http.StatusOK,
 		},
+		{
+			"Valid get db connection status",
+			http.MethodGet,
+			"/ping",
+			http.StatusOK,
+		},
 	}
 
 	ms := &mockStorage{}
-	h := NewHandler(ms, nil)
+
+	fakeDB := &db.FakeDB{}
+	db := &db.DB{
+		SQLDB: fakeDB,
+	}
+
+	h := NewHandler(ms, db)
 
 	r := gin.Default()
 	h.RegisterRoutes(r)
