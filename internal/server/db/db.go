@@ -9,7 +9,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-type FakeDB struct{}
+type TestMetric struct {
+	Name  string
+	Type  string
+	Value float64
+}
+
+type FakeDB struct {
+	Metrics []TestMetric
+}
 
 type FakeResult struct {
 	lastInsertId int64
@@ -59,6 +67,24 @@ type SQLDB interface {
 
 type DB struct {
 	SQLDB
+}
+
+func (db *DB) CreateTable(ctx context.Context) error {
+	query := `
+	 CREATE TABLE IF NOT EXISTS metrics (
+	  name text NOT NULL,
+	  type text NOT NULL,
+	  value float NOT NULL,
+	  PRIMARY KEY (name, type)
+	 );
+	`
+
+	_, err := db.SQLDB.ExecContext(ctx, query)
+	if err != nil {
+		return errors.Wrap(err, "unable to create table")
+	}
+
+	return nil
 }
 
 // NewDB инициализирует и возвращает новый *DB.

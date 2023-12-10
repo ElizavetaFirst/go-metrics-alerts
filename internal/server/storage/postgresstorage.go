@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -12,24 +13,39 @@ type PostgresStorage struct {
 	db db.SQLDB
 }
 
-func NewPostgresStorage(databaseDSN string) (*PostgresStorage, error) {
-	db, err := db.NewDB(databaseDSN)
+func NewPostgresStorage(ctx context.Context, databaseDSN string) (*PostgresStorage, error) {
+	realDb, err := db.NewDB(databaseDSN)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't init db")
+		return nil, errors.Wrap(err, "can't init db database")
 	}
+
+	database := &db.DB{SQLDB: realDb}
+
+	err = database.CreateTable(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't create table")
+	}
+
 	return &PostgresStorage{
-		db: db,
+		db: database,
 	}, nil
 }
 
 func (ps *PostgresStorage) Update(opts *UpdateOptions) error {
+	if ps.db == nil {
+		return errors.New("database is not inited")
+	}
 	_, err := ps.db.ExecContext(opts.Context, `INSERT INTO metrics (name, type, value) VALUES ($1, $2, $3) 
 	 ON CONFLICT(name, type) DO UPDATE SET value = $3;`, opts.MetricName, opts.Update.Type, opts.Update.Value)
 	return err
 }
 
 func (ps *PostgresStorage) Get(opts *GetOptions) (Metric, bool) {
-	fmt.Println(ps.db)
+	if ps.db == nil {
+		fmt.Printf("database is not inited")
+		return Metric{}, false
+	}
+
 	row := ps.db.QueryRowContext(opts.Context, `SELECT value FROM metrics WHERE name=$1 AND type=$2`, opts.MetricName, opts.MetricType)
 
 	var value int
@@ -50,6 +66,10 @@ func (ps *PostgresStorage) Get(opts *GetOptions) (Metric, bool) {
 }
 
 func (ps *PostgresStorage) GetAll(opts *GetAllOptions) map[string]Metric {
+	if ps.db == nil {
+		fmt.Printf("database is not inited")
+		return nil
+	}
 	rows, err := ps.db.QueryContext(opts.Context, `SELECT name, type, value FROM metrics`)
 	if err != nil {
 		fmt.Println(err) // handle error properly
@@ -89,9 +109,15 @@ func (ps *PostgresStorage) SetAll(opts *SetAllOptions) {
 }
 
 func (ps *PostgresStorage) Ping() error {
+	if ps.db == nil {
+		return errors.New("database is not inited")
+	}
 	return ps.db.Ping()
 }
 
 func (ps *PostgresStorage) Close() error {
+	if ps.db == nil {
+		return errors.New("database is not inited")
+	}
 	return ps.db.Close()
 }

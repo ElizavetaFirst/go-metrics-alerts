@@ -45,7 +45,7 @@ var RootCmd = &cobra.Command{
 		var s storage.Storage
 		if databaseDSN != "" {
 			s = &storage.PostgresStorage{}
-			s, err = storage.NewPostgresStorage(databaseDSN)
+			s, err = storage.NewPostgresStorage(cmd.Context(), databaseDSN)
 			if err != nil {
 				fmt.Printf("failed to create the postgres storage %v", err)
 			}
