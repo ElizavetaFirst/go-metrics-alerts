@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/db"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/saver"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/webserver"
@@ -43,20 +42,25 @@ var RootCmd = &cobra.Command{
 			return errors.Wrap(err, "can't get databaseDSN")
 		}
 
-		storage := storage.NewMemStorage()
-		saver := saver.NewSaver(storeInterval, fileStoragePath, restore, storage)
-		database, err := db.NewDB(databaseDSN)
-		if err != nil {
-			return errors.Wrap(err, "can't init db")
-		}
-		defer func() {
-			if err := database.Close(); err != nil {
-				fmt.Printf("failed to close the database %v", err)
+		var s storage.Storage
+		if databaseDSN != "" {
+			s = &storage.PostgresStorage{}
+			s, err = storage.NewPostgresStorage(databaseDSN)
+			if err != nil {
+				fmt.Printf("failed to create the postgres storage %v", err)
 			}
-		}()
+			defer func() {
+				if err := s.Close(); err != nil {
+					fmt.Printf("failed to close the postgres storage %v", err)
+				}
+			}()
+		} else {
+			s = &storage.MemStorage{}
+			s = storage.NewMemStorage()
+		}
 
-		server := webserver.NewWebserver(storage, database)
-
+		saver := saver.NewSaver(storeInterval, fileStoragePath, restore, s)
+		server := webserver.NewWebserver(s)
 		go func() {
 			if err := saver.Run(); err != nil {
 				fmt.Printf("error while saver Run %v", err)

@@ -10,7 +10,6 @@ import (
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/metrics"
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/db"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
 )
@@ -23,13 +22,12 @@ const (
 
 type Handler struct {
 	Storage storage.Storage
-	db      *db.DB
 }
 
-func NewHandler(s storage.Storage, db *db.DB) *Handler {
+func NewHandler(s storage.Storage) *Handler {
 	return &Handler{
 		Storage: s,
-		db:      db}
+	}
 }
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
@@ -191,7 +189,7 @@ func (h *Handler) handleGetAllValues(c *gin.Context) {
 }
 
 func (h *Handler) handlePing(c *gin.Context) {
-	err := h.db.Ping()
+	err := h.Storage.Ping()
 	if err != nil {
 		fmt.Printf("Error on DB Ping: %s\n", err.Error())
 		c.Status(http.StatusInternalServerError)

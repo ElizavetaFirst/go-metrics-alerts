@@ -54,9 +54,10 @@ func (s *Saver) Run() error {
 
 	go func() {
 		for range c {
-			if err := s.getAndSaveMetrics(); err != nil {
-				fmt.Printf("can't save metrics on interrupt signal: %v", err)
-			}
+			// TODO think about avoiding it in db cases
+			//if err := s.getAndSaveMetrics(); err != nil {
+			//	fmt.Printf("can't save metrics on interrupt signal: %v", err)
+			//}
 			os.Exit(0)
 		}
 	}()
