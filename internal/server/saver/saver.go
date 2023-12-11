@@ -1,6 +1,7 @@
 package saver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,8 +36,11 @@ func NewSaver(storeInterval int,
 	}
 }
 
-func (s *Saver) getAndSaveMetrics() error {
-	metrics := s.storage.GetAll(&storage.GetAllOptions{})
+func (s *Saver) getAndSaveMetrics(ctx context.Context) error {
+	metrics, err := s.storage.GetAll(ctx)
+	if err != nil {
+		return fmt.Errorf("can't GetAll metrics: %w", err)
+	}
 	if len(metrics) == 0 {
 		return nil
 	}
@@ -48,14 +52,14 @@ func (s *Saver) getAndSaveMetrics() error {
 	return nil
 }
 
-func (s *Saver) Run() error {
+func (s *Saver) Run(ctx context.Context) error {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		for range c {
 			// TODO think about avoiding it in db cases
-			if err := s.getAndSaveMetrics(); err != nil {
+			if err := s.getAndSaveMetrics(ctx); err != nil {
 				fmt.Printf("can't save metrics on interrupt signal: %v", err)
 			}
 			os.Exit(0)
@@ -67,14 +71,17 @@ func (s *Saver) Run() error {
 		if err != nil {
 			return fmt.Errorf("cannot load metrics from file: %w", err)
 		}
-		s.storage.SetAll(&storage.SetAllOptions{Metrics: metrics})
+		err = s.storage.SetAll(ctx, &storage.SetAllOptions{Metrics: metrics})
+		if err != nil {
+			return fmt.Errorf("cannot set all metrics: %w", err)
+		}
 	}
 
 	ticker := time.NewTicker(s.storeInterval)
 
 	errorCount := 0
 	for range ticker.C {
-		err := s.getAndSaveMetrics()
+		err := s.getAndSaveMetrics(ctx)
 		if err != nil {
 			fmt.Printf("can't save metrics on timer tick: %v", err)
 			errorCount++
@@ -84,7 +91,7 @@ func (s *Saver) Run() error {
 		}
 	}
 
-	if err := s.getAndSaveMetrics(); err != nil {
+	if err := s.getAndSaveMetrics(ctx); err != nil {
 		fmt.Printf("can't save metrics when closing Saver: %v", err)
 	}
 	return nil

@@ -44,7 +44,7 @@ var RootCmd = &cobra.Command{
 
 		var s storage.Storage
 		if databaseDSN != "" {
-			s = &storage.PostgresStorage{}
+			s = &storage.DBStorage{}
 			s, err = storage.NewPostgresStorage(cmd.Context(), databaseDSN)
 			if err != nil {
 				fmt.Printf("failed to create the postgres storage %v", err)
@@ -62,7 +62,7 @@ var RootCmd = &cobra.Command{
 		saver := saver.NewSaver(storeInterval, fileStoragePath, restore, s)
 		server := webserver.NewWebserver(s)
 		go func() {
-			if err := saver.Run(); err != nil {
+			if err := saver.Run(cmd.Context()); err != nil {
 				fmt.Printf("error while saver Run %v", err)
 				os.Exit(0)
 			}

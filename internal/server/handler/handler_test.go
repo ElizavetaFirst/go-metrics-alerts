@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -8,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/db"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -16,21 +16,31 @@ import (
 
 type mockStorage struct{}
 
-func (ms *mockStorage) Update(opts *storage.UpdateOptions) error {
+func (ms *mockStorage) Update(ctx context.Context, opts *storage.UpdateOptions) error {
 	return nil
 }
 
-func (ms *mockStorage) Get(opts *storage.GetOptions) (storage.Metric, bool) {
-	return storage.Metric{}, false
+func (ms *mockStorage) Get(ctx context.Context, opts *storage.GetOptions) (storage.Metric, error) {
+	return storage.Metric{}, nil
 }
 
-func (ms *mockStorage) GetAll(opts *storage.GetAllOptions) map[string]storage.Metric {
+func (ms *mockStorage) GetAll(ctx context.Context) (map[string]storage.Metric, error) {
 	return map[string]storage.Metric{
 		"test": {Type: constants.Gauge, Value: 123},
-	}
+	}, nil
 }
 
-func (ms *mockStorage) SetAll(opts *storage.SetAllOptions) {}
+func (ms *mockStorage) SetAll(ctx context.Context, opts *storage.SetAllOptions) error {
+	return nil
+}
+
+func (ms *mockStorage) Ping() error {
+	return nil
+}
+
+func (ms *mockStorage) Close() error {
+	return nil
+}
 
 func TestHandler_ServeHTTP(t *testing.T) {
 	tests := []struct {
@@ -85,12 +95,13 @@ func TestHandler_ServeHTTP(t *testing.T) {
 
 	ms := &mockStorage{}
 
-	fakeDB := &db.FakeDB{}
+	/*fakeDB := &db.FakeDB{}
 	db := &db.DB{
 		SQLDB: fakeDB,
-	}
+	}*/
 
-	h := NewHandler(ms, db)
+	// h := NewHandler(ms, db)
+	h := NewHandler(ms)
 
 	r := gin.Default()
 	h.RegisterRoutes(r)

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -14,7 +15,7 @@ func NewMemStorage() *MemStorage {
 	return &MemStorage{}
 }
 
-func (ms *MemStorage) Update(opts *UpdateOptions) error {
+func (ms *MemStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 	metricName := opts.MetricName
 	update := opts.Update
 	uniqueID := metricName + string(update.Type)
@@ -45,18 +46,18 @@ func (ms *MemStorage) Update(opts *UpdateOptions) error {
 	return nil
 }
 
-func (ms *MemStorage) Get(opts *GetOptions) (Metric, bool) {
+func (ms *MemStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error) {
 	metricName := opts.MetricName
 	metricType := opts.MetricType
 	uniqueID := metricName + metricType
 	metric, exists := ms.Data.Load(uniqueID)
 	if exists {
-		return metric.(Metric), exists
+		return metric.(Metric), nil
 	}
-	return Metric{}, exists
+	return Metric{}, fmt.Errorf("can't get metric from MemStorage %s %s: %w", metricName, metricType, ErrMetricNotFound)
 }
 
-func (ms *MemStorage) GetAll(opts *GetAllOptions) map[string]Metric {
+func (ms *MemStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 	result := make(map[string]Metric)
 	ms.Data.Range(func(key, value interface{}) bool {
 		keyStr, ok := key.(string)
@@ -72,10 +73,10 @@ func (ms *MemStorage) GetAll(opts *GetAllOptions) map[string]Metric {
 		result[keyStr] = valueMetric
 		return true
 	})
-	return result
+	return result, nil
 }
 
-func (ms *MemStorage) SetAll(opts *SetAllOptions) {
+func (ms *MemStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 	metrics := opts.Metrics
 	for key, metric := range metrics {
 		if metric.Type == "counter" && metric.Value != nil {
@@ -85,6 +86,7 @@ func (ms *MemStorage) SetAll(opts *SetAllOptions) {
 		}
 		ms.Data.Store(key, metric)
 	}
+	return nil
 }
 
 func (ms *MemStorage) Ping() error {

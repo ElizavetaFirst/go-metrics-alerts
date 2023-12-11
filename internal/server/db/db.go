@@ -2,10 +2,9 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 )
 
@@ -15,71 +14,45 @@ type TestMetric struct {
 	Value float64
 }
 
-type FakeDB struct {
-	Metrics []TestMetric
-}
-
-type FakeResult struct {
-	lastInsertId int64
-	rowsAffected int64
-}
-
-func (fr *FakeResult) LastInsertId() (int64, error) {
-	return fr.lastInsertId, nil
-}
-
-func (fr *FakeResult) RowsAffected() (int64, error) {
-	return fr.rowsAffected, nil
-}
-
-func (f *FakeDB) Ping() error {
-	return nil
-}
-
-func (f *FakeDB) Close() error {
-	return nil
-}
-
-func (f *FakeDB) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	return &FakeResult{
-		lastInsertId: 1,
-		rowsAffected: 1,
-	}, nil
-}
-
-func (f *FakeDB) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
-	var row *sql.Row
-	return row
-}
-
-func (f *FakeDB) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	var rows *sql.Rows
-	return rows, nil
-}
-
-type SQLDB interface {
-	Ping() error
-	Close() error
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
-}
-
 type DB struct {
-	SQLDB
+	conn *pgxpool.Pool
+}
+
+func (db *DB) Ping() error {
+	return db.conn.Ping(context.Background())
+}
+
+func (db *DB) Close() error {
+	return nil // pgxpool.Pool не нужно закрывать
+}
+
+func (db *DB) ExecContext(ctx context.Context, query string, args ...interface{}) (int64, error) {
+	tag, err := db.conn.Exec(ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+func (db *DB) QueryRowContext(ctx context.Context, query string, args ...interface{}) pgx.Row {
+	return db.conn.QueryRow(ctx, query, args...)
+}
+
+func (db *DB) QueryContext(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
+	return db.conn.Query(ctx, query, args...)
 }
 
 func (db *DB) CreateTable(ctx context.Context) error {
 	query := `
-	 CREATE TABLE IF NOT EXISTS metrics (
-	  name text NOT NULL,
-	  type text NOT NULL,
-	  value float NOT NULL,
-	  PRIMARY KEY (name, type)
-	 );
-	`
+  CREATE TABLE IF NOT EXISTS metrics (
+   name text NOT NULL,
+   type text NOT NULL,
+   value float NOT NULL,
+   PRIMARY KEY (name, type)
+  );
+ `
 
-	_, err := db.SQLDB.ExecContext(ctx, query)
+	_, err := db.conn.Exec(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, "unable to create table")
 	}
@@ -87,12 +60,10 @@ func (db *DB) CreateTable(ctx context.Context) error {
 	return nil
 }
 
-// NewDB инициализирует и возвращает новый *DB.
-func NewDB(dataSourceName string) (*DB, error) {
-	fmt.Println(dataSourceName)
-	realDB, err := sql.Open("postgres", dataSourceName)
+func NewDB(ctx context.Context, dataSourceName string) (*DB, error) {
+	conn, err := pgxpool.Connect(ctx, dataSourceName)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't open database")
 	}
-	return &DB{realDB}, nil
+	return &DB{conn: conn}, nil
 }

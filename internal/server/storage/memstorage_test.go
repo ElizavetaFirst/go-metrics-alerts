@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -10,12 +11,13 @@ import (
 func TestGetGauge(t *testing.T) {
 	ms := NewMemStorage()
 
-	_, ok := ms.Get(&GetOptions{MetricName: "nonexistent", MetricType: constants.Gauge})
-	if ok == true {
-		t.Errorf("expected false for nonexistent metric, got %v", ok)
+	ctx := context.TODO()
+	_, err := ms.Get(ctx, &GetOptions{MetricName: "nonexistent", MetricType: constants.Gauge})
+	if err != nil {
+		t.Errorf("expected false for nonexistent metric, got %v", err)
 	}
 
-	err := ms.Update(&UpdateOptions{
+	err = ms.Update(ctx, &UpdateOptions{
 		MetricName: "testMetric",
 		Update: Metric{
 			Type:  Gauge,
@@ -26,9 +28,9 @@ func TestGetGauge(t *testing.T) {
 		fmt.Printf("can't update testMetric %v", err)
 	}
 
-	metric, ok := ms.Get(&GetOptions{MetricName: "testMetric", MetricType: constants.Gauge})
-	if ok == false {
-		t.Errorf("expected true for existent metric, got %v", ok)
+	metric, err := ms.Get(ctx, &GetOptions{MetricName: "testMetric", MetricType: constants.Gauge})
+	if err != nil {
+		t.Errorf("expected true for existent metric, got %v", err)
 	} else if metric.Value != 23.5 {
 		t.Errorf("expected 23.5 for existent metric, got %v", metric.Value)
 	}
@@ -37,12 +39,13 @@ func TestGetGauge(t *testing.T) {
 func TestGetCounter(t *testing.T) {
 	ms := NewMemStorage()
 
-	_, ok := ms.Get(&GetOptions{MetricName: "nonexistent", MetricType: constants.Counter})
-	if ok == true {
-		t.Errorf("expected false for nonexistent metric, got %v", ok)
+	ctx := context.TODO()
+	_, err := ms.Get(ctx, &GetOptions{MetricName: "nonexistent", MetricType: constants.Counter})
+	if err != nil {
+		t.Errorf("expected false for nonexistent metric, got %v", err)
 	}
 
-	err := ms.Update(&UpdateOptions{
+	err = ms.Update(ctx, &UpdateOptions{
 		MetricName: "testMetric",
 		Update: Metric{
 			Type:  Counter,
@@ -53,9 +56,9 @@ func TestGetCounter(t *testing.T) {
 		fmt.Printf("can't update testMetric %v", err)
 	}
 
-	metric, ok := ms.Get(&GetOptions{MetricName: "testMetric", MetricType: constants.Counter})
-	if ok == false {
-		t.Errorf("expected true for existent metric, got %v", ok)
+	metric, err := ms.Get(ctx, &GetOptions{MetricName: "testMetric", MetricType: constants.Counter})
+	if err != nil {
+		t.Errorf("expected true for existent metric, got %v", err)
 	} else if metric.Value != int64(10) {
 		t.Errorf("expected 10 for existent metric, got %v", metric.Value)
 	}
