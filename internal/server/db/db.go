@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -43,11 +44,13 @@ func (db *DB) QueryContext(ctx context.Context, query string, args ...interface{
 }
 
 func (db *DB) CreateTable(ctx context.Context) error {
+	fmt.Println(db.conn.Config().ConnConfig.User)
 	query := `
   CREATE TABLE IF NOT EXISTS metrics (
    name text NOT NULL,
    type text NOT NULL,
-   value float NOT NULL,
+   value double precision,
+   delta bigint,
    PRIMARY KEY (name, type)
   );
  `
@@ -57,10 +60,18 @@ func (db *DB) CreateTable(ctx context.Context) error {
 		return errors.Wrap(err, "unable to create table")
 	}
 
+	//grantQuery := `GRANT ALL PRIVILEGES ON TABLE metrics TO postgres;`
+
+	//_, err = db.conn.Exec(ctx, grantQuery)
+	//if err != nil {
+	//	return errors.Wrap(err, "unable to grant privileges")
+	//}
+
 	return nil
 }
 
 func NewDB(ctx context.Context, dataSourceName string) (*DB, error) {
+	fmt.Println(dataSourceName)
 	conn, err := pgxpool.Connect(ctx, dataSourceName)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't open database")

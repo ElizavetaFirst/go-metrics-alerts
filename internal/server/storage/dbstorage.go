@@ -32,8 +32,20 @@ func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 	if dbs.db == nil {
 		return errors.New("database is not inited")
 	}
-	_, err := dbs.db.ExecContext(ctx, `INSERT INTO metrics (name, type, value) VALUES ($1, $2, $3) 
- ON CONFLICT(name, type) DO UPDATE SET value = $3;`, opts.MetricName, opts.Update.Type, opts.Update.Value)
+
+	var value, delta interface{}
+	if opts.Update.Type == "counter" {
+		delta = opts.Update.Value
+	} else if opts.Update.Type == "gauge" {
+		value = opts.Update.Value
+	}
+
+	_, err := dbs.db.ExecContext(ctx, `
+		INSERT INTO metrics (name, type, value, delta)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT(name, type) DO UPDATE
+		SET value = EXCLUDED.value, delta = EXCLUDED.delta;`,
+		opts.MetricName, opts.Update.Type, value, delta)
 	return err
 }
 
@@ -42,17 +54,24 @@ func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 		return Metric{}, fmt.Errorf("database is not inited: %w", ErrDBNotInited)
 	}
 
-	row := dbs.db.QueryRowContext(ctx, `SELECT value FROM metrics WHERE name=$1 AND type=$2`, opts.MetricName, opts.MetricType)
+	row := dbs.db.QueryRowContext(ctx, `SELECT value, delta FROM metrics WHERE name=$1 AND type=$2`, opts.MetricName, opts.MetricType)
 
-	var value int
-	err := row.Scan(&value)
+	var value, delta interface{}
+	err := row.Scan(&value, &delta)
 	if err != nil {
 		fmt.Println(err)
 		return Metric{}, fmt.Errorf("can't get metric from MemStorage %s %s: %w", opts.MetricName, opts.MetricType, ErrMetricNotFound)
 	}
 
+	var metricValue interface{}
+	if value != nil {
+		metricValue = value
+	} else if delta != nil {
+		metricValue = delta.(int64)
+	}
+
 	metric := Metric{
-		Value: value,
+		Value: metricValue,
 		Type:  MetricType(opts.MetricType),
 	}
 	return metric, nil
@@ -62,7 +81,8 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 	if dbs.db == nil {
 		return nil, fmt.Errorf("database is not inited: %w", ErrDBNotInited)
 	}
-	rows, err := dbs.db.QueryContext(ctx, `SELECT name, type, value FROM metrics`)
+
+	rows, err := dbs.db.QueryContext(ctx, `SELECT name, type, value, delta FROM metrics`)
 	if err != nil {
 		return nil, fmt.Errorf("QueryContext error: %w", err)
 	}
@@ -71,16 +91,23 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 	metrics := make(map[string]Metric)
 	for rows.Next() {
 		var (
-			name  string
-			t     string
-			value float64
+			name, t      string
+			value, delta interface{}
 		)
-		if err := rows.Scan(&name, &t, &value); err != nil {
-			fmt.Println(err) // handle error properly
+		if err := rows.Scan(&name, &t, &value, &delta); err != nil {
+			fmt.Println(err)
 			continue
 		}
+
+		var metricValue interface{}
+		if value != nil {
+			metricValue = value
+		} else if delta != nil {
+			metricValue = delta.(int64)
+		}
+
 		metricKey := fmt.Sprintf("%s_%s", name, t)
-		metrics[metricKey] = Metric{Type: MetricType(t), Value: value}
+		metrics[metricKey] = Metric{Type: MetricType(t), Value: metricValue}
 	}
 
 	return metrics, nil
@@ -90,15 +117,17 @@ func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 	if dbs.db == nil {
 		return fmt.Errorf("database is not inited: %w", ErrDBNotInited)
 	}
+
 	for key, metric := range opts.Metrics {
 		updateOpts := &UpdateOptions{
 			MetricName: key,
 			Update:     metric,
 		}
 		if err := dbs.Update(ctx, updateOpts); err != nil {
-			return fmt.Errorf("can't update DBStorage by %s %s: %w", key, metric, err) // you would want to handle error properly
+			return fmt.Errorf("can't update DBStorage by %s %s: %w", key, metric, err)
 		}
 	}
+
 	return nil
 }
 
