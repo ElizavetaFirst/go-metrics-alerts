@@ -140,7 +140,7 @@ func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 
 	for key, metric := range opts.Metrics {
 		updateOpts := &UpdateOptions{
-			 MetricName: key,
+			MetricName: key,
 			Update:     metric,
 		}
 		if err := dbs.Update(ctx, updateOpts); err != nil {
