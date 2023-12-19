@@ -54,7 +54,10 @@ func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 		END;`,
 		opts.MetricName, opts.Update.Type, value, delta)
 
-	return fmt.Errorf("ExecContext return error %w", err)
+	if err != nil {
+		return fmt.Errorf("ExecContext return error %w", err)
+	}
+	return nil
 }
 
 func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error) {
@@ -68,7 +71,6 @@ func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 	var value, delta interface{}
 	err := row.Scan(&value, &delta)
 	if err != nil {
-		fmt.Println(err)
 		return Metric{}, fmt.Errorf("can't get metric from DBStorage %s %s: %w",
 			opts.MetricName, opts.MetricType, ErrMetricNotFound)
 	}
@@ -137,9 +139,8 @@ func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 	}
 
 	for key, metric := range opts.Metrics {
-		fmt.Println("SetAll", key, metric)
 		updateOpts := &UpdateOptions{
-			MetricName: key,
+			 MetricName: key,
 			Update:     metric,
 		}
 		if err := dbs.Update(ctx, updateOpts); err != nil {
