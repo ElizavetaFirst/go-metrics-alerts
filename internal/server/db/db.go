@@ -20,7 +20,10 @@ type DB struct {
 }
 
 func (db *DB) Ping() error {
-	return db.conn.Ping(context.Background())
+	if err := db.conn.Ping(context.Background()); err != nil {
+		return fmt.Errorf("db ping error %w", err)
+	}
+	return nil
 }
 
 func (db *DB) Close() error {
@@ -30,7 +33,7 @@ func (db *DB) Close() error {
 func (db *DB) ExecContext(ctx context.Context, query string, args ...interface{}) (int64, error) {
 	tag, err := db.conn.Exec(ctx, query, args...)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("ExecContext return error %w", err)
 	}
 	return tag.RowsAffected(), nil
 }
@@ -40,7 +43,11 @@ func (db *DB) QueryRowContext(ctx context.Context, query string, args ...interfa
 }
 
 func (db *DB) QueryContext(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
-	return db.conn.Query(ctx, query, args...)
+	rows, err := db.conn.Query(ctx, query, args...)
+	if err != nil {
+		return rows, fmt.Errorf("QueryContext return error %w", err)
+	}
+	return rows, nil
 }
 
 func (db *DB) CreateTable(ctx context.Context) error {
@@ -59,13 +66,6 @@ func (db *DB) CreateTable(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to create table")
 	}
-
-	//grantQuery := `GRANT ALL PRIVILEGES ON TABLE metrics TO postgres;`
-
-	//_, err = db.conn.Exec(ctx, grantQuery)
-	//if err != nil {
-	//	return errors.Wrap(err, "unable to grant privileges")
-	//}
 
 	return nil
 }

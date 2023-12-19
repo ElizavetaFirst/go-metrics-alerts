@@ -4,70 +4,88 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/db"
 	"github.com/pkg/errors"
 )
+
+const databaseNotInitedFormat = "database is not inited: %w"
 
 type DBStorage struct {
 	db *db.DB
 }
 
 func NewPostgresStorage(ctx context.Context, databaseDSN string) (*DBStorage, error) {
-	realDb, err := db.NewDB(ctx, databaseDSN)
+	realDB, err := db.NewDB(ctx, databaseDSN)
 	if err != nil {
-		return nil, ErrDBNotInited
+		return nil, fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
 	}
 
-	err = realDb.CreateTable(ctx)
+	err = realDB.CreateTable(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't create table")
 	}
 
 	return &DBStorage{
-		db: realDb,
+		db: realDB,
 	}, nil
 }
 
 func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 	if dbs.db == nil {
-		return errors.New("database is not inited")
+		return ErrDBNotInited
 	}
 
 	var value, delta interface{}
-	if opts.Update.Type == "counter" {
+	if opts.Update.Type == constants.Counter {
 		delta = opts.Update.Value
-	} else if opts.Update.Type == "gauge" {
+	} else if opts.Update.Type == constants.Gauge {
 		value = opts.Update.Value
 	}
 
 	_, err := dbs.db.ExecContext(ctx, `
-		INSERT INTO metrics (name, type, value, delta)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT(name, type) DO UPDATE
-		SET value = EXCLUDED.value, delta = EXCLUDED.delta;`,
+	INSERT INTO metrics (name, type, value, delta)
+	VALUES ($1, $2, $3, $4)
+	ON CONFLICT(name, type) DO UPDATE
+	SET value = EXCLUDED.value, 
+		delta = CASE 
+			WHEN metrics.type = 'counter' THEN metrics.delta + EXCLUDED.delta
+			ELSE EXCLUDED.delta
+		END;`,
 		opts.MetricName, opts.Update.Type, value, delta)
-	return err
+
+	return fmt.Errorf("ExecContext return error %w", err)
 }
 
 func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error) {
 	if dbs.db == nil {
-		return Metric{}, fmt.Errorf("database is not inited: %w", ErrDBNotInited)
+		return Metric{}, fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
 	}
 
-	row := dbs.db.QueryRowContext(ctx, `SELECT value, delta FROM metrics WHERE name=$1 AND type=$2`, opts.MetricName, opts.MetricType)
+	row := dbs.db.QueryRowContext(ctx, `SELECT value, delta FROM metrics WHERE name=$1 AND type=$2`,
+		opts.MetricName, opts.MetricType)
 
 	var value, delta interface{}
 	err := row.Scan(&value, &delta)
 	if err != nil {
 		fmt.Println(err)
-		return Metric{}, fmt.Errorf("can't get metric from MemStorage %s %s: %w", opts.MetricName, opts.MetricType, ErrMetricNotFound)
+		return Metric{}, fmt.Errorf("can't get metric from DBStorage %s %s: %w",
+			opts.MetricName, opts.MetricType, ErrMetricNotFound)
 	}
 
 	var metricValue interface{}
-	if value != nil {
-		metricValue = value
-	} else if delta != nil {
-		metricValue = delta.(int64)
+	var ok bool
+	switch {
+	case value != nil:
+		if metricValue, ok = value.(float64); !ok {
+			return Metric{}, ErrIncorrectType
+		}
+	case delta != nil:
+		if metricValue, ok = value.(int64); !ok {
+			return Metric{}, ErrIncorrectType
+		}
+	default:
+		return Metric{}, ErrMetricNotFound
 	}
 
 	metric := Metric{
@@ -79,7 +97,7 @@ func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 
 func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 	if dbs.db == nil {
-		return nil, fmt.Errorf("database is not inited: %w", ErrDBNotInited)
+		return nil, fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
 	}
 
 	rows, err := dbs.db.QueryContext(ctx, `SELECT name, type, value, delta FROM metrics`)
@@ -103,7 +121,7 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 		if value != nil {
 			metricValue = value
 		} else if delta != nil {
-			metricValue = delta.(int64)
+			metricValue = delta
 		}
 
 		metricKey := fmt.Sprintf("%s_%s", name, t)
@@ -115,10 +133,11 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 
 func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 	if dbs.db == nil {
-		return fmt.Errorf("database is not inited: %w", ErrDBNotInited)
+		return fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
 	}
 
 	for key, metric := range opts.Metrics {
+		fmt.Println("SetAll", key, metric)
 		updateOpts := &UpdateOptions{
 			MetricName: key,
 			Update:     metric,
@@ -133,14 +152,20 @@ func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 
 func (dbs *DBStorage) Ping() error {
 	if dbs.db == nil {
-		return errors.New("database is not inited")
+		return fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
 	}
-	return dbs.db.Ping()
+	if err := dbs.db.Ping(); err != nil {
+		return fmt.Errorf("db Ping return error %w", err)
+	}
+	return nil
 }
 
 func (dbs *DBStorage) Close() error {
 	if dbs.db == nil {
-		return errors.New("database is not inited")
+		return fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
 	}
-	return dbs.db.Close()
+	if err := dbs.db.Close(); err != nil {
+		return fmt.Errorf("db Close return error %w", err)
+	}
+	return nil
 }

@@ -34,6 +34,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.POST(updateURL, logger.LogRequest(), h.handleUpdate)
 	r.POST("/update", logger.LogRequest(), h.handleJSONUpdate)
 	r.POST("/value/", logger.LogRequest(), h.handleJSONGetValue)
+	r.POST("/updates/", logger.LogRequest(), h.handleUpdates)
 	r.GET(updateURL, h.handleNotAllowed)
 	r.GET("/value/:metricType/:metricName", logger.LogResponse(), h.handleGetValue)
 	r.GET("/", logger.LogResponse(), h.handleGetAllValues)
@@ -136,7 +137,7 @@ func (h *Handler) handleJSONGetValue(c *gin.Context) {
 		return
 	}
 
-	if metrics.MType == "counter" {
+	if metrics.MType == constants.Counter {
 		fmt.Println(reflect.TypeOf(value.Value).Kind() == reflect.Int64)
 		delta, ok := value.Value.(int64)
 		if !ok {
@@ -154,6 +155,56 @@ func (h *Handler) handleJSONGetValue(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, metrics)
+}
+
+func (h *Handler) handleUpdates(c *gin.Context) {
+	var metrics []metrics.Metrics
+
+	if err := c.BindJSON(&metrics); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	metricsMap := make(map[string]storage.Metric)
+	for _, m := range metrics {
+		if m.MType == constants.Gauge {
+			metricsMap[m.ID] = storage.Metric{
+				Value: m.Value,
+				Type:  storage.MetricType(m.MType),
+			}
+		} else if m.MType == constants.Counter {
+			if m.Delta != nil {
+				fmt.Println(metricsMap)
+				existingMetric, ok := metricsMap[m.ID]
+				if ok {
+					existingDelta, ok := existingMetric.Value.(*int64)
+					if !ok {
+						fmt.Println("all counter values must be int64")
+						continue
+					}
+					newDelta := *existingDelta + *m.Delta
+					existingMetric.Value = &newDelta
+					metricsMap[m.ID] = existingMetric
+				} else {
+					delta := *m.Delta
+					metricsMap[m.ID] = storage.Metric{
+						Value: &delta,
+						Type:  storage.MetricType(m.MType),
+					}
+				}
+			}
+		}
+	}
+
+	setAllOpts := storage.SetAllOptions{Metrics: metricsMap}
+	err := h.Storage.SetAll(c.Request.Context(), &setAllOpts)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
 
 func (h *Handler) handleGetValue(c *gin.Context) {

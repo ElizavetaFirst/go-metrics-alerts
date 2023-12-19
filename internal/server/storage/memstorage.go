@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 )
 
 type MemStorage struct {
@@ -79,7 +81,7 @@ func (ms *MemStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 func (ms *MemStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 	metrics := opts.Metrics
 	for key, metric := range metrics {
-		if metric.Type == "counter" && metric.Value != nil {
+		if metric.Type == constants.Counter && metric.Value != nil {
 			if value, ok := metric.Value.(float64); ok {
 				metric.Value = int64(value)
 			}

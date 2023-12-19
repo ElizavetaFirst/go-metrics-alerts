@@ -13,13 +13,14 @@ import (
 )
 
 const (
-	contentTypeStr  = "Content-Type"
-	textPlainStr    = "text/plain"
-	maxTimeout      = 30
-	cantSendUpdate  = "can't send update request"
-	cantCloseBody   = "can't close update request resp.Body"
-	cantMarshalJSON = "can't marshal metrics to JSON"
-	updateReqFormat = "http://%s/update"
+	contentTypeStr   = "Content-Type"
+	textPlainStr     = "text/plain"
+	maxTimeout       = 30
+	cantSendUpdate   = "can't send update request"
+	cantCloseBody    = "can't close update request resp.Body"
+	cantMarshalJSON  = "can't marshal metrics to JSON"
+	updateReqFormat  = "http://%s/update"
+	updatesReqFormat = "http://%s/updates/"
 )
 
 type (
@@ -140,6 +141,26 @@ func (u *Uploader) sendMetricsJSON(url string, metrics []byte) error {
 	return nil
 }
 
+func (u *Uploader) SendGaugeMetricsUpdatesJSON(metricsMap map[string]float64) error {
+	metricsList := make([]metrics.Metrics, 0, len(metricsMap))
+	for k, v := range metricsMap {
+		v := v
+		metric := metrics.Metrics{
+			ID:    k,
+			MType: constants.Gauge,
+			Value: &v,
+		}
+		metricsList = append(metricsList, metric)
+	}
+
+	url := fmt.Sprintf(updatesReqFormat, u.addr)
+	metricsJSON, err := json.Marshal(metricsList)
+	if err != nil {
+		return errors.Wrap(err, cantMarshalJSON)
+	}
+	return u.sendMetricsJSON(url, metricsJSON)
+}
+
 func (u *Uploader) SendGaugeMetricsJSON(metricsMap map[string]float64) error {
 	for k, v := range metricsMap {
 		v := v
@@ -180,4 +201,24 @@ func (u *Uploader) SendCounterMetricsJSON(metricsMap map[string]int64) error {
 		}
 	}
 	return nil
+}
+
+func (u *Uploader) SendCounterMetricsUpdatesJSON(metricsMap map[string]int64) error {
+	metricsList := make([]metrics.Metrics, 0, len(metricsMap))
+	for k, v := range metricsMap {
+		v := v
+		metric := metrics.Metrics{
+			ID:    k,
+			MType: constants.Counter,
+			Delta: &v,
+		}
+		metricsList = append(metricsList, metric)
+	}
+
+	url := fmt.Sprintf(updatesReqFormat, u.addr)
+	metricsJSON, err := json.Marshal(metricsList)
+	if err != nil {
+		return errors.Wrap(err, cantMarshalJSON)
+	}
+	return u.sendMetricsJSON(url, metricsJSON)
 }

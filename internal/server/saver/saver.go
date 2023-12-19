@@ -58,7 +58,6 @@ func (s *Saver) Run(ctx context.Context) error {
 
 	go func() {
 		for range c {
-			// TODO think about avoiding it in db cases
 			if err := s.getAndSaveMetrics(ctx); err != nil {
 				fmt.Printf("can't save metrics on interrupt signal: %v", err)
 			}
