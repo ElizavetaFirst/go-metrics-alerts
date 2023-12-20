@@ -18,7 +18,7 @@ type DBStorage struct {
 func NewPostgresStorage(ctx context.Context, databaseDSN string) (*DBStorage, error) {
 	realDB, err := db.NewDB(ctx, databaseDSN)
 	if err != nil {
-		return nil, fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
+		return nil, fmt.Errorf(databaseNotInitedFormat, ErrCantConnectDB)
 	}
 
 	err = realDB.CreateTable(ctx)

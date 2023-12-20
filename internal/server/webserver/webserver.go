@@ -2,15 +2,24 @@ package webserver
 
 import (
 	"strings"
+	"time"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/middleware"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/handler"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
+	"github.com/cenkalti/backoff"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
+)
+
+const (
+	initialInterval = 1 * time.Second
+	multiplier      = 2
+	maxInterval     = 5 * time.Second
+	maxElapsedTime  = 9 * time.Second
 )
 
 type Webserver struct {
@@ -28,7 +37,34 @@ func NewWebserver(
 }
 
 func (ws *Webserver) Run(addr string) error {
-	return errors.Wrap(ws.Router.Run(addr), "error while Webserver Run")
+	var err error
+
+	operation := func() error {
+		err = ws.Router.Run(addr)
+
+		if err != nil {
+			if errors.Is(err, storage.ErrDBNotInited) ||
+				errors.Is(err, storage.ErrCantConnectDB) {
+				return errors.Wrap(err, "server Run return retriable error")
+			}
+
+			return backoff.Permanent(err)
+		}
+
+		return nil
+	}
+
+	exponentialBackOff := backoff.NewExponentialBackOff()
+	exponentialBackOff.InitialInterval = initialInterval
+	exponentialBackOff.Multiplier = multiplier
+	exponentialBackOff.MaxInterval = maxInterval
+	exponentialBackOff.MaxElapsedTime = maxElapsedTime
+
+	if err := backoff.Retry(operation, exponentialBackOff); err != nil {
+		return errors.Wrap(err, "retry failed")
+	}
+
+	return nil
 }
 
 func setupRouter(storage storage.Storage) *gin.Engine {

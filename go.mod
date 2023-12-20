@@ -3,6 +3,7 @@ module github.com/ElizavetaFirst/go-metrics-alerts
 go 1.21.0
 
 require (
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/gin-contrib/gzip v0.0.6
 	github.com/gin-gonic/gin v1.9.1
 	github.com/jackc/pgx/v4 v4.18.1

@@ -34,6 +34,7 @@ var (
 	ErrDBNotInited    = errors.New("db is not inited")
 	ErrMetricNotFound = errors.New("metric not found")
 	ErrIncorrectType  = errors.New("incorrect metric type")
+	ErrCantConnectDB  = errors.New("can't connect to db")
 )
 
 type Storage interface {

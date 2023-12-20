@@ -71,7 +71,6 @@ func (db *DB) CreateTable(ctx context.Context) error {
 }
 
 func NewDB(ctx context.Context, dataSourceName string) (*DB, error) {
-	fmt.Println(dataSourceName)
 	conn, err := pgxpool.Connect(ctx, dataSourceName)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't open database")
