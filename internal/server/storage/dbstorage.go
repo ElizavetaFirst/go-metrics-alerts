@@ -83,7 +83,7 @@ func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 			return Metric{}, ErrIncorrectType
 		}
 	case delta != nil:
-		if metricValue, ok = value.(int64); !ok {
+		if metricValue, ok = delta.(int64); !ok {
 			return Metric{}, ErrIncorrectType
 		}
 	default:
