@@ -7,7 +7,6 @@ import (
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/agent/collector"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/agent/uploader"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -25,15 +24,15 @@ var RootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		addr, err := cmd.Flags().GetString("addr")
 		if err != nil {
-			return errors.Wrap(err, "can't get addr flag")
+			return fmt.Errorf("can't get addr flag %w", err)
 		}
 		reportInterval, err := cmd.Flags().GetInt("reportInterval")
 		if err != nil {
-			return errors.Wrap(err, "can't get reportInterval flag")
+			return fmt.Errorf("can't get reportInterval flag %w", err)
 		}
 		pollInterval, err := cmd.Flags().GetInt("pollInterval")
 		if err != nil {
-			return errors.Wrap(err, "can't get pollInterval flag")
+			return fmt.Errorf("can't get pollInterval flag %w", err)
 		}
 
 		parts := strings.Split(addr, ":")

@@ -24,7 +24,7 @@ func main() {
 	root.RootCmd.PersistentFlags().BoolVarP(&restore, "restore", "r",
 		env.GetEnvBool("RESTORE", true), "the flag to decide restore metrics from disk")
 	root.RootCmd.PersistentFlags().StringVarP(&databaseDSN, "databaseDSN", "d",
-		env.GetEnvString("DATABASE_DSN", ""),
+		env.GetEnvString("DATABASE_DSN", "postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable"),
 		"db address")
 
 	if err := root.RootCmd.Execute(); err != nil {

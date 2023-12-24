@@ -6,10 +6,7 @@ import (
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/db"
-	"github.com/pkg/errors"
 )
-
-const databaseNotInitedFormat = "database is not inited: %w"
 
 type DBStorage struct {
 	db *db.DB
@@ -18,12 +15,12 @@ type DBStorage struct {
 func NewPostgresStorage(ctx context.Context, databaseDSN string) (*DBStorage, error) {
 	realDB, err := db.NewDB(ctx, databaseDSN)
 	if err != nil {
-		return nil, fmt.Errorf(databaseNotInitedFormat, ErrCantConnectDB)
+		return nil, fmt.Errorf("database is not inited: %w", ErrCantConnectDB)
 	}
 
 	err = realDB.CreateTable(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't create table")
+		return nil, fmt.Errorf("can't create table %w", err)
 	}
 
 	return &DBStorage{
@@ -61,10 +58,6 @@ func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 }
 
 func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error) {
-	if dbs.db == nil {
-		return Metric{}, fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
-	}
-
 	row := dbs.db.QueryRowContext(ctx, `SELECT value, delta FROM metrics WHERE name=$1 AND type=$2`,
 		opts.MetricName, opts.MetricType)
 
@@ -98,10 +91,6 @@ func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 }
 
 func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
-	if dbs.db == nil {
-		return nil, fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
-	}
-
 	rows, err := dbs.db.QueryContext(ctx, `SELECT name, type, value, delta FROM metrics`)
 	if err != nil {
 		return nil, fmt.Errorf("QueryContext error: %w", err)
@@ -134,10 +123,6 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 }
 
 func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
-	if dbs.db == nil {
-		return fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
-	}
-
 	for key, metric := range opts.Metrics {
 		updateOpts := &UpdateOptions{
 			MetricName: key,
@@ -152,9 +137,6 @@ func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 }
 
 func (dbs *DBStorage) Ping() error {
-	if dbs.db == nil {
-		return fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
-	}
 	if err := dbs.db.Ping(); err != nil {
 		return fmt.Errorf("db Ping return error %w", err)
 	}
@@ -162,9 +144,6 @@ func (dbs *DBStorage) Ping() error {
 }
 
 func (dbs *DBStorage) Close() error {
-	if dbs.db == nil {
-		return fmt.Errorf(databaseNotInitedFormat, ErrDBNotInited)
-	}
 	if err := dbs.db.Close(); err != nil {
 		return fmt.Errorf("db Close return error %w", err)
 	}

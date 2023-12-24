@@ -9,18 +9,13 @@ import (
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/metrics"
-	"github.com/pkg/errors"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 const (
-	contentTypeStr   = "Content-Type"
-	textPlainStr     = "text/plain"
-	maxTimeout       = 30
-	cantSendUpdate   = "can't send update request"
-	cantCloseBody    = "can't close update request resp.Body"
-	cantMarshalJSON  = "can't marshal metrics to JSON"
-	updateReqFormat  = "http://%s/update"
-	updatesReqFormat = "http://%s/updates/"
+	contentTypeStr = "Content-Type"
+	textPlainStr   = "text/plain"
+	maxTimeout     = 30
 )
 
 type (
@@ -79,18 +74,27 @@ func (u *Uploader) Run() {
 	}
 }
 
+func (u *Uploader) createRetryableHTTPClient() *retryablehttp.Client {
+	client := retryablehttp.NewClient()
+	client.RetryMax = 4
+	client.RetryWaitMin = 1 * time.Second
+	client.RetryWaitMax = 5 * time.Second
+	return client
+}
+
 func (u *Uploader) sendMetrics(url string) error {
-	client := &http.Client{
-		Timeout: time.Second * maxTimeout,
+	client := u.createRetryableHTTPClient()
+	req, err := retryablehttp.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return fmt.Errorf("can't make request %w", err)
 	}
-	req, _ := http.NewRequest(http.MethodPost, url, nil)
 	req.Header.Set(contentTypeStr, textPlainStr)
 	resp, err := client.Do(req)
 	if err != nil {
-		return errors.Wrap(err, cantSendUpdate)
+		return fmt.Errorf("can't send update request %w", err)
 	}
 	if err = resp.Body.Close(); err != nil {
-		return errors.Wrap(err, cantCloseBody)
+		return fmt.Errorf("can't close update request resp.Body %w", err)
 	}
 	return nil
 }
@@ -116,23 +120,22 @@ func (u *Uploader) SendCounterMetrics(metrics map[string]int64) error {
 }
 
 func (u *Uploader) sendMetricsJSON(url string, metrics []byte) error {
+	retryableClient := u.createRetryableHTTPClient()
 	client := &ClientWithMiddleware{
-		HTTPClient: &http.Client{
-			Timeout: time.Second * maxTimeout,
-		},
+		HTTPClient: retryableClient,
 	}
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(metrics))
+	req, err := retryablehttp.NewRequest(http.MethodPost, url, bytes.NewBuffer(metrics))
 	if err != nil {
-		return errors.Wrap(err, "can't make request")
+		return fmt.Errorf("can't make request %w", err)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return errors.Wrap(err, cantSendUpdate)
+		return fmt.Errorf("can't send update request %w", err)
 	}
 	defer func() {
 		closeErr := resp.Body.Close()
 		if closeErr != nil {
-			closeErr = errors.Wrap(closeErr, "Failed to close the body of the response")
+			closeErr = fmt.Errorf("failed to close the body of the response %w", closeErr)
 			if err == nil {
 				err = closeErr
 			}
@@ -153,10 +156,10 @@ func (u *Uploader) SendGaugeMetricsUpdatesJSON(metricsMap map[string]float64) er
 		metricsList = append(metricsList, metric)
 	}
 
-	url := fmt.Sprintf(updatesReqFormat, u.addr)
+	url := fmt.Sprintf("http://%s/updates/", u.addr)
 	metricsJSON, err := json.Marshal(metricsList)
 	if err != nil {
-		return errors.Wrap(err, cantMarshalJSON)
+		return fmt.Errorf("can't marshal metrics to JSON %w", err)
 	}
 	return u.sendMetricsJSON(url, metricsJSON)
 }
@@ -170,10 +173,10 @@ func (u *Uploader) SendGaugeMetricsJSON(metricsMap map[string]float64) error {
 			Value: &v,
 		}
 
-		url := fmt.Sprintf(updateReqFormat, u.addr)
+		url := fmt.Sprintf("http://%s/update", u.addr)
 		metricsJSON, err := json.Marshal(metric)
 		if err != nil {
-			return errors.Wrap(err, cantMarshalJSON)
+			return fmt.Errorf("can't marshal metrics to JSON %w", err)
 		}
 		if err := u.sendMetricsJSON(url, metricsJSON); err != nil {
 			return err
@@ -193,9 +196,9 @@ func (u *Uploader) SendCounterMetricsJSON(metricsMap map[string]int64) error {
 
 		metricsJSON, err := json.Marshal(metric)
 		if err != nil {
-			return errors.Wrap(err, cantMarshalJSON)
+			return fmt.Errorf("can't marshal metrics to JSON %w", err)
 		}
-		url := fmt.Sprintf(updateReqFormat, u.addr)
+		url := fmt.Sprintf("http://%s/update", u.addr)
 		if err := u.sendMetricsJSON(url, metricsJSON); err != nil {
 			return err
 		}
@@ -215,10 +218,10 @@ func (u *Uploader) SendCounterMetricsUpdatesJSON(metricsMap map[string]int64) er
 		metricsList = append(metricsList, metric)
 	}
 
-	url := fmt.Sprintf(updatesReqFormat, u.addr)
+	url := fmt.Sprintf("http://%s/updates/", u.addr)
 	metricsJSON, err := json.Marshal(metricsList)
 	if err != nil {
-		return errors.Wrap(err, cantMarshalJSON)
+		return fmt.Errorf("can't marshal metrics to JSON %w", err)
 	}
 	return u.sendMetricsJSON(url, metricsJSON)
 }

@@ -6,7 +6,6 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/pkg/errors"
 )
 
 type TestMetric struct {
@@ -51,7 +50,6 @@ func (db *DB) QueryContext(ctx context.Context, query string, args ...interface{
 }
 
 func (db *DB) CreateTable(ctx context.Context) error {
-	fmt.Println(db.conn.Config().ConnConfig.User)
 	query := `
   CREATE TABLE IF NOT EXISTS metrics (
    name text NOT NULL,
@@ -64,7 +62,7 @@ func (db *DB) CreateTable(ctx context.Context) error {
 
 	_, err := db.conn.Exec(ctx, query)
 	if err != nil {
-		return errors.Wrap(err, "unable to create table")
+		return fmt.Errorf("unable to create table %w", err)
 	}
 
 	return nil
@@ -73,7 +71,7 @@ func (db *DB) CreateTable(ctx context.Context) error {
 func NewDB(ctx context.Context, dataSourceName string) (*DB, error) {
 	conn, err := pgxpool.Connect(ctx, dataSourceName)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't open database")
+		return nil, fmt.Errorf("can't open database %w", err)
 	}
 	return &DB{conn: conn}, nil
 }

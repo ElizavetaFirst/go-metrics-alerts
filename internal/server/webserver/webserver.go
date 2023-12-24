@@ -1,6 +1,7 @@
 package webserver
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -45,7 +46,7 @@ func (ws *Webserver) Run(addr string) error {
 		if err != nil {
 			if errors.Is(err, storage.ErrDBNotInited) ||
 				errors.Is(err, storage.ErrCantConnectDB) {
-				return errors.Wrap(err, "server Run return retriable error")
+				return fmt.Errorf("server Run return retriable error %w", err)
 			}
 
 			return backoff.Permanent(err)
@@ -61,7 +62,7 @@ func (ws *Webserver) Run(addr string) error {
 	exponentialBackOff.MaxElapsedTime = maxElapsedTime
 
 	if err := backoff.Retry(operation, exponentialBackOff); err != nil {
-		return errors.Wrap(err, "retry failed")
+		return fmt.Errorf("retry failed %w", err)
 	}
 
 	return nil
