@@ -16,6 +16,9 @@ const (
 	contentTypeStr = "Content-Type"
 	textPlainStr   = "text/plain"
 	maxTimeout     = 30
+	retryMax       = 4
+	retryWaitMin   = 1 * time.Second
+	retryWaitMax   = 5 * time.Second
 )
 
 type (
@@ -76,9 +79,9 @@ func (u *Uploader) Run() {
 
 func (u *Uploader) createRetryableHTTPClient() *retryablehttp.Client {
 	client := retryablehttp.NewClient()
-	client.RetryMax = 4
-	client.RetryWaitMin = 1 * time.Second
-	client.RetryWaitMax = 5 * time.Second
+	client.RetryMax = retryMax
+	client.RetryWaitMin = retryWaitMin
+	client.RetryWaitMax = retryWaitMax
 	return client
 }
 
