@@ -1,7 +1,9 @@
 package root
 
 import (
+	"context"
 	"fmt"
+	"go.uber.org/zap"
 	"strings"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/saver"
@@ -41,15 +43,24 @@ var RootCmd = &cobra.Command{
 		}
 
 		var s storage.Storage
+		log, err := zap.NewProduction()
+		if err != nil {
+			fmt.Printf("can't initialize zap logger: %v", err)
+			return err
+		}
+		defer log.Sync()
+
+		ctx := context.WithValue(context.Background(), "logger", log)
+
 		if databaseDSN != "" {
-			s, err = storage.NewPostgresStorage(cmd.Context(), databaseDSN)
+			s, err = storage.NewPostgresStorage(ctx, databaseDSN)
 
 			if err != nil {
 				return fmt.Errorf("failed to create the postgres storage %w", err)
 			}
 			defer func() {
 				if err := s.Close(); err != nil {
-					fmt.Printf("failed to close the postgres storage %v", err)
+					log.Error("failed to close the postgres storage", zap.Error(err))
 				}
 			}()
 		} else {
@@ -58,7 +69,7 @@ var RootCmd = &cobra.Command{
 			errChan := make(chan error)
 
 			go func() {
-				if err := saver.Run(cmd.Context()); err != nil {
+				if err := saver.Run(ctx); err != nil {
 					errChan <- err
 				}
 				close(errChan)
@@ -68,7 +79,7 @@ var RootCmd = &cobra.Command{
 				return fmt.Errorf("error while saver Run %w", err)
 			}
 		}
-		server := webserver.NewWebserver(s)
+		server := webserver.NewWebserver(s, log)
 
 		return fmt.Errorf("error while server Run %w", server.Run(addr))
 	},

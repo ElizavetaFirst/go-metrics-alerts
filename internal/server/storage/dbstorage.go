@@ -3,9 +3,9 @@ package storage
 import (
 	"context"
 	"fmt"
-
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"go.uber.org/zap"
 )
 
 type DBStorage struct {
@@ -15,6 +15,7 @@ type DBStorage struct {
 func NewPostgresStorage(ctx context.Context, databaseDSN string) (*DBStorage, error) {
 	conn, err := newDB(ctx, databaseDSN)
 	if err != nil {
+		ctx.Value(constants.Logger).(*zap.Logger).Error("database is not inited", zap.Error(err))
 		return nil, fmt.Errorf("database is not inited: %w", ErrCantConnectDB)
 	}
 
@@ -24,6 +25,7 @@ func NewPostgresStorage(ctx context.Context, databaseDSN string) (*DBStorage, er
 
 	err = dbStorage.CreateTable(ctx)
 	if err != nil {
+		ctx.Value(constants.Logger).(*zap.Logger).Error("can't create table", zap.Error(err))
 		return nil, fmt.Errorf("can't create table %w", err)
 	}
 
@@ -50,6 +52,7 @@ func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 		opts.MetricName, opts.Update.Type, value, delta)
 
 	if err != nil {
+		ctx.Value(constants.Logger).(*zap.Logger).Error("ExecContext return error", zap.Error(err))
 		return fmt.Errorf("ExecContext return error %w", err)
 	}
 	return nil
@@ -62,6 +65,10 @@ func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 	var value, delta interface{}
 	err := row.Scan(&value, &delta)
 	if err != nil {
+		ctx.Value(constants.Logger).(*zap.Logger).Error("can't get metric from DBStorage",
+			zap.String("name", opts.MetricName),
+			zap.String("type", opts.MetricType),
+			zap.Error(err))
 		return Metric{}, fmt.Errorf("can't get metric from DBStorage %s %s: %w",
 			opts.MetricName, opts.MetricType, ErrMetricNotFound)
 	}
@@ -91,6 +98,7 @@ func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 	rows, err := dbs.conn.Query(ctx, `SELECT name, type, value, delta FROM metrics`)
 	if err != nil {
+		ctx.Value(constants.Logger).(*zap.Logger).Error("QueryContext error", zap.Error(err))
 		return nil, fmt.Errorf("QueryContext error: %w", err)
 	}
 	defer rows.Close()
@@ -102,7 +110,7 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 			value, delta interface{}
 		)
 		if err := rows.Scan(&name, &t, &value, &delta); err != nil {
-			fmt.Println(err)
+			ctx.Value(constants.Logger).(*zap.Logger).Error("cant scan metric", zap.Error(err))
 			continue
 		}
 
@@ -127,6 +135,10 @@ func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 			Update:     metric,
 		}
 		if err := dbs.Update(ctx, updateOpts); err != nil {
+			ctx.Value(constants.Logger).(*zap.Logger).Error("can't update DBStorage by",
+				zap.String("MetricName", key),
+				zap.String("MetricType", string(metric.Type)),
+				zap.Error(err))
 			return fmt.Errorf("can't update DBStorage by %s %s: %w", key, metric, err)
 		}
 	}
@@ -136,6 +148,7 @@ func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 
 func (dbs *DBStorage) Ping(ctx context.Context) error {
 	if err := dbs.conn.Ping(ctx); err != nil {
+		ctx.Value(constants.Logger).(*zap.Logger).Error("db ping error", zap.Error(err))
 		return fmt.Errorf("db ping error %w", err)
 	}
 	return nil
@@ -149,6 +162,7 @@ func (dbs *DBStorage) Close() error {
 func newDB(ctx context.Context, dataSourceName string) (*pgxpool.Pool, error) {
 	conn, err := pgxpool.Connect(ctx, dataSourceName)
 	if err != nil {
+		ctx.Value(constants.Logger).(*zap.Logger).Error("can't open database", zap.Error(err))
 		return nil, fmt.Errorf("can't open database %w", err)
 	}
 	return conn, nil
@@ -167,6 +181,7 @@ func (dbs *DBStorage) CreateTable(ctx context.Context) error { // TODO make with
 
 	_, err := dbs.conn.Exec(ctx, query)
 	if err != nil {
+		ctx.Value(constants.Logger).(*zap.Logger).Error("unable to create table", zap.Error(err))
 		return fmt.Errorf("unable to create table %w", err)
 	}
 

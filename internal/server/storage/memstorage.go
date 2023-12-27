@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"sync"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
@@ -40,6 +41,8 @@ func (ms *MemStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 				metric.Value = value + newValue
 			}
 		} else {
+			ctx.Value(constants.Logger).(*zap.Logger).Error("unexpected value type for counter metric",
+				zap.String("uniqueID", uniqueID))
 			return errors.New("unexpected value type for counter metric")
 		}
 	}
@@ -56,6 +59,9 @@ func (ms *MemStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 	if exists {
 		return metric.(Metric), nil
 	}
+	ctx.Value(constants.Logger).(*zap.Logger).Error("can't get metric from MemStorage",
+		zap.String("MetricName", metricName),
+		zap.String("MetricType", metricType))
 	return Metric{}, fmt.Errorf("can't get metric from MemStorage %s %s: %w", metricName, metricType, ErrMetricNotFound)
 }
 
@@ -64,12 +70,12 @@ func (ms *MemStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 	ms.data.Range(func(key, value interface{}) bool {
 		keyStr, ok := key.(string)
 		if !ok {
-			fmt.Printf("can't get key value")
+			ctx.Value(constants.Logger).(*zap.Logger).Warn("can't get key value")
 		}
 
 		valueMetric, ok := value.(Metric)
 		if !ok {
-			fmt.Printf("can't get value")
+			ctx.Value(constants.Logger).(*zap.Logger).Warn("can't get value")
 		}
 
 		result[keyStr] = valueMetric

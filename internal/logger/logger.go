@@ -1,37 +1,22 @@
 package logger
 
 import (
-	"errors"
-	"fmt"
-	"syscall"
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-const logger = "Logger"
-
-func InitLogger() gin.HandlerFunc {
-	var log *zap.Logger
-	var err error
-	log, err = zap.NewProduction()
-	if err != nil {
-		fmt.Printf("can't initialize zap logger: %v", err)
-	}
-
+func InitLogger(log *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Set(logger, log)
+		c.Set(constants.Logger, log)
 		c.Next()
-
-		if err := log.Sync(); err != nil && (!errors.Is(err, syscall.EBADF) && !errors.Is(err, syscall.ENOTTY)) {
-			fmt.Printf("can't sync zap logger: %v", err)
-		}
 	}
 }
 
 func GetLogger(c *gin.Context) *zap.Logger {
-	if v, ok := c.Get(logger); ok {
+	if v, ok := c.Get(constants.Logger); ok {
 		if log, ok := v.(*zap.Logger); ok {
 			return log
 		}

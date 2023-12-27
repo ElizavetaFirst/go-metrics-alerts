@@ -2,6 +2,7 @@ package webserver
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"strings"
 	"time"
 
@@ -29,8 +30,9 @@ type Webserver struct {
 
 func NewWebserver(
 	storage storage.Storage,
+	log *zap.Logger,
 ) *Webserver {
-	router := setupRouter(storage)
+	router := setupRouter(storage, log)
 
 	return &Webserver{
 		Router: router,
@@ -68,11 +70,11 @@ func (ws *Webserver) Run(addr string) error {
 	return nil
 }
 
-func setupRouter(storage storage.Storage) *gin.Engine {
+func setupRouter(storage storage.Storage, log *zap.Logger) *gin.Engine {
 	handler := handler.NewHandler(storage)
 
 	r := gin.Default()
-	r.Use(logger.InitLogger())
+	r.Use(logger.InitLogger(log))
 	r.Use(middleware.GzipGinRequestMiddleware)
 	r.Use(func(c *gin.Context) {
 		acceptEncoding := c.GetHeader("Accept-Encoding")

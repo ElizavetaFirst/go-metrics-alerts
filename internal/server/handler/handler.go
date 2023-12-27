@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -125,7 +126,9 @@ func (h *Handler) handleNotAllowed(c *gin.Context) {
 func (h *Handler) handleJSONGetValue(c *gin.Context) {
 	var metrics metrics.Metrics
 	if err := c.ShouldBindJSON(&metrics); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Request.Context().Value(constants.Logger).(*zap.Logger).Error("ShouldBindJSON return error",
+			zap.Error(err))
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
@@ -139,7 +142,9 @@ func (h *Handler) handleJSONGetValue(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Request.Context().Value(constants.Logger).(*zap.Logger).Error("Get metric return error",
+			zap.Error(err))
+		c.Status(http.StatusInternalServerError)
 		return
 	}
 
@@ -167,7 +172,9 @@ func (h *Handler) handleUpdates(c *gin.Context) {
 	var metrics []metrics.Metrics
 
 	if err := c.BindJSON(&metrics); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Request.Context().Value(constants.Logger).(*zap.Logger).Error("BindJSON return error",
+			zap.Error(err))
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
@@ -206,7 +213,9 @@ func (h *Handler) handleUpdates(c *gin.Context) {
 	err := h.Storage.SetAll(c.Request.Context(), &setAllOpts)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Request.Context().Value(constants.Logger).(*zap.Logger).Error("SetAll return error",
+			zap.Error(err))
+		c.Status(http.StatusInternalServerError)
 		return
 	}
 
@@ -252,7 +261,8 @@ func (h *Handler) handleGetAllValues(c *gin.Context) {
 func (h *Handler) handlePing(c *gin.Context) {
 	err := h.Storage.Ping(c)
 	if err != nil {
-		fmt.Printf("Error on DB Ping: %s\n", err.Error())
+		c.Request.Context().Value(constants.Logger).(*zap.Logger).Error("Ping return error",
+			zap.Error(err))
 		c.Status(http.StatusInternalServerError)
 		return
 	}
