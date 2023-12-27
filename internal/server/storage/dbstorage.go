@@ -3,9 +3,9 @@ package storage
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type DBStorage struct {
@@ -31,7 +31,6 @@ func NewPostgresStorage(ctx context.Context, databaseDSN string) (*DBStorage, er
 }
 
 func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
-
 	var value, delta interface{}
 	if opts.Update.Type == constants.Counter {
 		delta = opts.Update.Value
