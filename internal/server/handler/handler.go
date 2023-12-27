@@ -3,11 +3,12 @@ package handler
 import (
 	"errors"
 	"fmt"
-	"go.uber.org/zap"
 	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"

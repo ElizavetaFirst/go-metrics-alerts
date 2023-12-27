@@ -3,8 +3,10 @@ package root
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"strings"
+
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
+	"go.uber.org/zap"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/saver"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
@@ -46,11 +48,16 @@ var RootCmd = &cobra.Command{
 		log, err := zap.NewProduction()
 		if err != nil {
 			fmt.Printf("can't initialize zap logger: %v", err)
-			return err
+			return fmt.Errorf("zap.NewProduction() return error %w", err)
 		}
-		defer log.Sync()
+		defer func() {
+			if err := log.Sync(); err != nil {
+				log.Error("failed to Sync() log", zap.Error(err))
+			}
+		}()
 
-		ctx := context.WithValue(context.Background(), "logger", log)
+		//nolint:staticcheck //there is not collisions
+		ctx := context.WithValue(context.Background(), constants.Logger, log)
 
 		if databaseDSN != "" {
 			s, err = storage.NewPostgresStorage(ctx, databaseDSN)

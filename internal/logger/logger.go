@@ -1,8 +1,9 @@
 package logger
 
 import (
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"time"
+
+	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

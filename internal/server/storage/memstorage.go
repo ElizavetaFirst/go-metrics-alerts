@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.uber.org/zap"
 	"sync"
+
+	"go.uber.org/zap"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 )

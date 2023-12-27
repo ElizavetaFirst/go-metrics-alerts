@@ -2,9 +2,10 @@ package webserver
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/logger"
