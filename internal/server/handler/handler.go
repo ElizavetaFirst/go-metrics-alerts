@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -132,8 +133,13 @@ func (h *Handler) handleJSONGetValue(c *gin.Context) {
 		MetricName: metrics.ID,
 		MetricType: metrics.MType,
 	})
-	if (err != nil) || string(value.Type) != metrics.MType {
-		c.Status(http.StatusNotFound)
+
+	if err != nil {
+		if errors.Is(err, storage.ErrMetricNotFound) || string(value.Type) != metrics.MType {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -244,7 +250,7 @@ func (h *Handler) handleGetAllValues(c *gin.Context) {
 }
 
 func (h *Handler) handlePing(c *gin.Context) {
-	err := h.Storage.Ping()
+	err := h.Storage.Ping(c)
 	if err != nil {
 		fmt.Printf("Error on DB Ping: %s\n", err.Error())
 		c.Status(http.StatusInternalServerError)

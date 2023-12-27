@@ -10,7 +10,7 @@ import (
 )
 
 type MemStorage struct {
-	Data sync.Map
+	data sync.Map
 }
 
 func NewMemStorage() *MemStorage {
@@ -21,9 +21,9 @@ func (ms *MemStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 	metricName := opts.MetricName
 	update := opts.Update
 	uniqueID := metricName + string(update.Type)
-	m, exists := ms.Data.Load(uniqueID)
+	m, exists := ms.data.Load(uniqueID)
 	if !exists {
-		ms.Data.Store(uniqueID, update)
+		ms.data.Store(uniqueID, update)
 		return nil
 	}
 	metric, ok := m.(Metric)
@@ -44,7 +44,7 @@ func (ms *MemStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 		}
 	}
 
-	ms.Data.Store(uniqueID, metric)
+	ms.data.Store(uniqueID, metric)
 	return nil
 }
 
@@ -52,7 +52,7 @@ func (ms *MemStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 	metricName := opts.MetricName
 	metricType := opts.MetricType
 	uniqueID := metricName + metricType
-	metric, exists := ms.Data.Load(uniqueID)
+	metric, exists := ms.data.Load(uniqueID)
 	if exists {
 		return metric.(Metric), nil
 	}
@@ -61,7 +61,7 @@ func (ms *MemStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 
 func (ms *MemStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 	result := make(map[string]Metric)
-	ms.Data.Range(func(key, value interface{}) bool {
+	ms.data.Range(func(key, value interface{}) bool {
 		keyStr, ok := key.(string)
 		if !ok {
 			fmt.Printf("can't get key value")
@@ -86,12 +86,12 @@ func (ms *MemStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 				metric.Value = int64(value)
 			}
 		}
-		ms.Data.Store(key, metric)
+		ms.data.Store(key, metric)
 	}
 	return nil
 }
 
-func (ms *MemStorage) Ping() error {
+func (ms *MemStorage) Ping(ctx context.Context) error {
 	return nil
 }
 

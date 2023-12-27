@@ -3,35 +3,34 @@ package storage
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/db"
 )
 
 type DBStorage struct {
-	db *db.DB
+	conn *pgxpool.Pool
 }
 
 func NewPostgresStorage(ctx context.Context, databaseDSN string) (*DBStorage, error) {
-	realDB, err := db.NewDB(ctx, databaseDSN)
+	conn, err := newDB(ctx, databaseDSN)
 	if err != nil {
 		return nil, fmt.Errorf("database is not inited: %w", ErrCantConnectDB)
 	}
 
-	err = realDB.CreateTable(ctx)
+	dbStorage := DBStorage{
+		conn: conn,
+	}
+
+	err = dbStorage.CreateTable(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't create table %w", err)
 	}
 
-	return &DBStorage{
-		db: realDB,
-	}, nil
+	return &dbStorage, nil
 }
 
 func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
-	if dbs.db == nil {
-		return ErrDBNotInited
-	}
 
 	var value, delta interface{}
 	if opts.Update.Type == constants.Counter {
@@ -40,7 +39,7 @@ func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 		value = opts.Update.Value
 	}
 
-	_, err := dbs.db.ExecContext(ctx, `
+	_, err := dbs.conn.Exec(ctx, `
 	INSERT INTO metrics (name, type, value, delta)
 	VALUES ($1, $2, $3, $4)
 	ON CONFLICT(name, type) DO UPDATE
@@ -58,7 +57,7 @@ func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 }
 
 func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error) {
-	row := dbs.db.QueryRowContext(ctx, `SELECT value, delta FROM metrics WHERE name=$1 AND type=$2`,
+	row := dbs.conn.QueryRow(ctx, `SELECT value, delta FROM metrics WHERE name=$1 AND type=$2`,
 		opts.MetricName, opts.MetricType)
 
 	var value, delta interface{}
@@ -91,7 +90,7 @@ func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 }
 
 func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
-	rows, err := dbs.db.QueryContext(ctx, `SELECT name, type, value, delta FROM metrics`)
+	rows, err := dbs.conn.Query(ctx, `SELECT name, type, value, delta FROM metrics`)
 	if err != nil {
 		return nil, fmt.Errorf("QueryContext error: %w", err)
 	}
@@ -136,16 +135,41 @@ func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 	return nil
 }
 
-func (dbs *DBStorage) Ping() error {
-	if err := dbs.db.Ping(); err != nil {
-		return fmt.Errorf("db Ping return error %w", err)
+func (dbs *DBStorage) Ping(ctx context.Context) error {
+	if err := dbs.conn.Ping(ctx); err != nil {
+		return fmt.Errorf("db ping error %w", err)
 	}
 	return nil
 }
 
 func (dbs *DBStorage) Close() error {
-	if err := dbs.db.Close(); err != nil {
-		return fmt.Errorf("db Close return error %w", err)
+	dbs.conn.Close()
+	return nil
+}
+
+func newDB(ctx context.Context, dataSourceName string) (*pgxpool.Pool, error) {
+	conn, err := pgxpool.Connect(ctx, dataSourceName)
+	if err != nil {
+		return nil, fmt.Errorf("can't open database %w", err)
 	}
+	return conn, nil
+}
+
+func (dbs *DBStorage) CreateTable(ctx context.Context) error { // TODO make with migrations
+	query := `
+  CREATE TABLE IF NOT EXISTS metrics (
+   name text NOT NULL,
+   type text NOT NULL,
+   value double precision,
+   delta bigint,
+   PRIMARY KEY (name, type)
+  );
+ `
+
+	_, err := dbs.conn.Exec(ctx, query)
+	if err != nil {
+		return fmt.Errorf("unable to create table %w", err)
+	}
+
 	return nil
 }

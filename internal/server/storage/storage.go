@@ -42,6 +42,6 @@ type Storage interface {
 	Get(ctx context.Context, opts *GetOptions) (Metric, error)
 	GetAll(ctx context.Context) (map[string]Metric, error)
 	SetAll(ctx context.Context, opts *SetAllOptions) error
-	Ping() error
+	Ping(ctx context.Context) error
 	Close() error
 }

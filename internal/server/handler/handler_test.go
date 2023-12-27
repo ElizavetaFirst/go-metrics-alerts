@@ -34,7 +34,7 @@ func (ms *mockStorage) SetAll(ctx context.Context, opts *storage.SetAllOptions) 
 	return nil
 }
 
-func (ms *mockStorage) Ping() error {
+func (ms *mockStorage) Ping(ctx context.Context) error {
 	return nil
 }
 
@@ -95,12 +95,6 @@ func TestHandler_ServeHTTP(t *testing.T) {
 
 	ms := &mockStorage{}
 
-	/*fakeDB := &db.FakeDB{}
-	db := &db.DB{
-		SQLDB: fakeDB,
-	}*/
-
-	// h := NewHandler(ms, db)
 	h := NewHandler(ms)
 
 	r := gin.Default()
