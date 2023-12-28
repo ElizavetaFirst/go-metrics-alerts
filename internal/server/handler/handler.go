@@ -181,19 +181,20 @@ func (h *Handler) handleUpdates(c *gin.Context) {
 
 	metricsMap := make(map[string]storage.Metric)
 	for _, m := range metrics {
-		if m.MType == constants.Gauge {
+		switch m.MType {
+		case constants.Gauge:
 			metricsMap[m.ID] = storage.Metric{
 				Value: m.Value,
 				Type:  storage.MetricType(m.MType),
 			}
-		} else if m.MType == constants.Counter {
+
+		case constants.Counter:
 			if m.Delta != nil {
-				fmt.Println(metricsMap)
 				existingMetric, ok := metricsMap[m.ID]
 				if ok {
 					existingDelta, ok := existingMetric.Value.(*int64)
 					if !ok {
-						fmt.Println("all counter values must be int64")
+						c.Request.Context().Value(constants.LoggerKey{}).(*zap.Logger).Error("all counter values must be int64")
 						continue
 					}
 					newDelta := *existingDelta + *m.Delta
@@ -207,6 +208,11 @@ func (h *Handler) handleUpdates(c *gin.Context) {
 					}
 				}
 			}
+
+		default:
+			c.Request.Context().Value(constants.LoggerKey{}).(*zap.Logger).Error(
+				"metrics can be only counter or gauge type, but this metric has incorrect type",
+				zap.String("MetricType", m.MType))
 		}
 	}
 
