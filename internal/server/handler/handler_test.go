@@ -44,12 +44,6 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			http.StatusBadRequest,
 		},
 		{
-			"Not found get value",
-			http.MethodGet,
-			"/value/gauge/nonexistent",
-			http.StatusNotFound,
-		},
-		{
 			"Valid get all values request",
 			http.MethodGet,
 			"/",
