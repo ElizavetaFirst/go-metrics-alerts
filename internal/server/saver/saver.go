@@ -41,14 +41,14 @@ func NewSaver(storeInterval int,
 func (s *Saver) getAndSaveMetrics(ctx context.Context) error {
 	metrics, err := s.storage.GetAll(ctx)
 	if err != nil {
-		ctx.Value(constants.Logger).(*zap.Logger).Warn("can't GetAll metrics", zap.Error(err))
+		ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't GetAll metrics", zap.Error(err))
 	}
 	if len(metrics) == 0 {
 		return nil
 	}
 
 	if err := saveMetricsToFile(metrics, s.fileStoragePath); err != nil {
-		ctx.Value(constants.Logger).(*zap.Logger).Warn("can't save metrics to file",
+		ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't save metrics to file",
 			zap.String("fileStoragePath", s.fileStoragePath))
 		return err
 	}
@@ -62,7 +62,7 @@ func (s *Saver) Run(ctx context.Context) error {
 	go func() {
 		for range c {
 			if err := s.getAndSaveMetrics(ctx); err != nil {
-				ctx.Value(constants.Logger).(*zap.Logger).Warn("can't save metrics on interrupt signal", zap.Error(err))
+				ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't save metrics on interrupt signal", zap.Error(err))
 			}
 			os.Exit(0)
 		}
@@ -71,11 +71,11 @@ func (s *Saver) Run(ctx context.Context) error {
 	if s.restore {
 		metrics, err := loadMetricsFromFile(s.fileStoragePath)
 		if err != nil {
-			ctx.Value(constants.Logger).(*zap.Logger).Warn("cannot load metrics from file", zap.Error(err))
+			ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("cannot load metrics from file", zap.Error(err))
 		}
 		err = s.storage.SetAll(ctx, &storage.SetAllOptions{Metrics: metrics})
 		if err != nil {
-			ctx.Value(constants.Logger).(*zap.Logger).Warn("cannot set all metrics", zap.Error(err))
+			ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("cannot set all metrics", zap.Error(err))
 			return fmt.Errorf("cannot set all metrics: %w", err)
 		}
 	}
@@ -86,7 +86,7 @@ func (s *Saver) Run(ctx context.Context) error {
 	for range ticker.C {
 		err := s.getAndSaveMetrics(ctx)
 		if err != nil {
-			ctx.Value(constants.Logger).(*zap.Logger).Warn("can't save metrics on timer tick",
+			ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't save metrics on timer tick",
 				zap.Error(err))
 			errorCount++
 		}
@@ -96,7 +96,7 @@ func (s *Saver) Run(ctx context.Context) error {
 	}
 
 	if err := s.getAndSaveMetrics(ctx); err != nil {
-		ctx.Value(constants.Logger).(*zap.Logger).Warn("can't save metrics when closing Saver",
+		ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't save metrics when closing Saver",
 			zap.Error(err))
 	}
 	return nil

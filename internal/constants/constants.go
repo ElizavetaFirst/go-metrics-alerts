@@ -7,3 +7,5 @@ const (
 	MaxErrors = 1000
 	Logger    = "logger"
 )
+
+type LoggerKey struct{}

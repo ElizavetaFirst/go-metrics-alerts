@@ -56,8 +56,7 @@ var RootCmd = &cobra.Command{
 			}
 		}()
 
-		//nolint:staticcheck //there is not collisions
-		ctx := context.WithValue(context.Background(), constants.Logger, log)
+		ctx := context.WithValue(context.Background(), constants.LoggerKey{}, log)
 
 		if databaseDSN != "" {
 			s, err = storage.NewPostgresStorage(ctx, databaseDSN)
