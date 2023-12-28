@@ -2,18 +2,47 @@ package storage
 
 import (
 	"context"
+	"embed"
+	"errors"
 	"fmt"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/zap"
 )
+
+//go:embed migrations/*.sql
+var migrationsDir embed.FS
+
+func runMigrations(databaseDSN string) error {
+	d, err := iofs.New(migrationsDir, "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to return an iofs driver: %w", err)
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", d, databaseDSN)
+	if err != nil {
+		return fmt.Errorf("failed to get a new migrate instance: %w", err)
+	}
+	if err := m.Up(); err != nil {
+		if !errors.Is(err, migrate.ErrNoChange) {
+			return fmt.Errorf("failed to apply migrations to the DB: %w", err)
+		}
+	}
+	return nil
+}
 
 type DBStorage struct {
 	conn *pgxpool.Pool
 }
 
 func NewPostgresStorage(ctx context.Context, databaseDSN string) (*DBStorage, error) {
+	if err := runMigrations(databaseDSN); err != nil {
+		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
+	}
 	conn, err := newDB(ctx, databaseDSN)
 	if err != nil {
 		ctx.Value(constants.Logger).(*zap.Logger).Error("database is not inited", zap.Error(err))
@@ -22,12 +51,6 @@ func NewPostgresStorage(ctx context.Context, databaseDSN string) (*DBStorage, er
 
 	dbStorage := DBStorage{
 		conn: conn,
-	}
-
-	err = dbStorage.CreateTable(ctx)
-	if err != nil {
-		ctx.Value(constants.Logger).(*zap.Logger).Error("can't create table", zap.Error(err))
-		return nil, fmt.Errorf("can't create table %w", err)
 	}
 
 	return &dbStorage, nil
@@ -167,24 +190,4 @@ func newDB(ctx context.Context, dataSourceName string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("can't open database %w", err)
 	}
 	return conn, nil
-}
-
-func (dbs *DBStorage) CreateTable(ctx context.Context) error { // TODO make with migrations
-	query := `
-  CREATE TABLE IF NOT EXISTS metrics (
-   name text NOT NULL,
-   type text NOT NULL,
-   value double precision,
-   delta bigint,
-   PRIMARY KEY (name, type)
-  );
- `
-
-	_, err := dbs.conn.Exec(ctx, query)
-	if err != nil {
-		ctx.Value(constants.Logger).(*zap.Logger).Error("unable to create table", zap.Error(err))
-		return fmt.Errorf("unable to create table %w", err)
-	}
-
-	return nil
 }
