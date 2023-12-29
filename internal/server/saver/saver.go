@@ -56,6 +56,7 @@ func (s *Saver) getAndSaveMetrics(ctx context.Context) error {
 }
 
 func (s *Saver) Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
@@ -64,7 +65,8 @@ func (s *Saver) Run(ctx context.Context) error {
 			if err := s.getAndSaveMetrics(ctx); err != nil {
 				ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't save metrics on interrupt signal", zap.Error(err))
 			}
-			os.Exit(0)
+			cancel()
+			return
 		}
 	}()
 
