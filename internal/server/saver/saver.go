@@ -57,17 +57,17 @@ func (s *Saver) getAndSaveMetrics(ctx context.Context) error {
 
 func (s *Saver) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		for range c {
-			if err := s.getAndSaveMetrics(ctx); err != nil {
-				ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't save metrics on interrupt signal", zap.Error(err))
-			}
-			cancel()
-			return
+		<-c
+		if err := s.getAndSaveMetrics(ctx); err != nil {
+			ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't save metrics on interrupt signal", zap.Error(err))
 		}
+		cancel()
 	}()
 
 	if s.restore {
@@ -83,25 +83,29 @@ func (s *Saver) Run(ctx context.Context) error {
 	}
 
 	ticker := time.NewTicker(s.storeInterval)
+	defer ticker.Stop()
 
 	errorCount := 0
-	for range ticker.C {
-		err := s.getAndSaveMetrics(ctx)
-		if err != nil {
-			ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't save metrics on timer tick",
-				zap.Error(err))
-			errorCount++
-		}
-		if errorCount > constants.MaxErrors {
-			return errors.New("too many errors in Saver:Run")
+	for {
+		select {
+		case <-ticker.C:
+			err := s.getAndSaveMetrics(ctx)
+			if err != nil {
+				ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't save metrics on timer tick",
+					zap.Error(err))
+				errorCount++
+			}
+			if errorCount > constants.MaxErrors {
+				return errors.New("too many errors in Saver:Run")
+			}
+		case <-ctx.Done():
+			if err := s.getAndSaveMetrics(ctx); err != nil {
+				ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't save metrics when closing Saver",
+					zap.Error(err))
+			}
+			return fmt.Errorf("saver run() context return error %w", ctx.Err())
 		}
 	}
-
-	if err := s.getAndSaveMetrics(ctx); err != nil {
-		ctx.Value(constants.LoggerKey{}).(*zap.Logger).Warn("can't save metrics when closing Saver",
-			zap.Error(err))
-	}
-	return nil
 }
 
 func saveMetricsToFile(metrics map[string]storage.Metric, filePath string) error {
