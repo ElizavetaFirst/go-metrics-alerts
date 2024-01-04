@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -150,7 +149,6 @@ func (h *Handler) handleJSONGetValue(c *gin.Context) {
 	}
 
 	if metrics.MType == constants.Counter {
-		fmt.Println(reflect.TypeOf(value.Value).Kind() == reflect.Int64)
 		delta, ok := value.Value.(int64)
 		if !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data type for Delta"})
@@ -237,8 +235,14 @@ func (h *Handler) handleGetValue(c *gin.Context) {
 		MetricName: metricName,
 		MetricType: metricType,
 	})
-	if (err != nil) || string(value.Type) != metricType {
-		c.Status(http.StatusNotFound)
+	if err != nil {
+		if errors.Is(err, storage.ErrMetricNotFound) || string(value.Type) != metricType {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		c.Request.Context().Value(constants.LoggerKey{}).(*zap.Logger).Error("Get metric return error",
+			zap.Error(err))
+		c.Status(http.StatusInternalServerError)
 		return
 	}
 
