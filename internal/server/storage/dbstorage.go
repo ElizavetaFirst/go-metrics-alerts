@@ -58,11 +58,12 @@ func NewPostgresStorage(ctx context.Context, databaseDSN string) (*DBStorage, er
 
 func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 	var value, delta interface{}
-	if opts.Update.Type == constants.Counter {
+	switch opts.Update.Type {
+	case constants.Counter:
 		delta = opts.Update.Value
-	} else if opts.Update.Type == constants.Gauge {
+	case constants.Gauge:
 		value = opts.Update.Value
-	} else {
+	default:
 		ctx.Value(constants.Logger).(*zap.Logger).Error("incorrect type for update metric %s",
 			zap.String("MetricType", string(opts.Update.Type)))
 		return ErrIncorrectType
