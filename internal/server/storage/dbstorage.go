@@ -63,7 +63,9 @@ func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 	} else if opts.Update.Type == constants.Gauge {
 		value = opts.Update.Value
 	} else {
-		ctx.Value(constants.Logger).(*zap.Logger).Error("incorrect type for update metric %s", zap.String("MetricType", string(opts.Update.Type)))
+		ctx.Value(constants.Logger).(*zap.Logger).Error("incorrect type for update metric %s",
+			zap.String("MetricType", string(opts.Update.Type)))
+		return ErrIncorrectType
 	}
 
 	_, err := dbs.conn.Exec(ctx, `
