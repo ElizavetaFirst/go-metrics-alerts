@@ -37,20 +37,22 @@ func runMigrations(databaseDSN string) error {
 
 type DBStorage struct {
 	conn *pgxpool.Pool
+	log  *zap.Logger
 }
 
-func NewPostgresStorage(ctx context.Context, databaseDSN string) (*DBStorage, error) {
+func NewPostgresStorage(ctx context.Context, databaseDSN string, log *zap.Logger) (*DBStorage, error) {
 	if err := runMigrations(databaseDSN); err != nil {
 		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
 	}
 	conn, err := newDB(ctx, databaseDSN)
 	if err != nil {
-		ctx.Value(constants.Logger).(*zap.Logger).Error("database is not inited", zap.Error(err))
+		log.Error("database is not inited", zap.Error(err))
 		return nil, fmt.Errorf("database is not inited: %w", ErrCantConnectDB)
 	}
 
 	dbStorage := DBStorage{
 		conn: conn,
+		log:  log,
 	}
 
 	return &dbStorage, nil
@@ -64,7 +66,7 @@ func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 	case constants.Gauge:
 		value = opts.Update.Value
 	default:
-		ctx.Value(constants.Logger).(*zap.Logger).Error("incorrect type for update metric %s",
+		dbs.log.Error("incorrect type for update metric %s",
 			zap.String("MetricType", string(opts.Update.Type)))
 		return ErrIncorrectType
 	}
@@ -81,7 +83,7 @@ func (dbs *DBStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 		opts.MetricName, opts.Update.Type, value, delta)
 
 	if err != nil {
-		ctx.Value(constants.Logger).(*zap.Logger).Error("ExecContext return error", zap.Error(err))
+		dbs.log.Error("ExecContext return error", zap.Error(err))
 		return fmt.Errorf("ExecContext return error %w", err)
 	}
 	return nil
@@ -94,7 +96,7 @@ func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 	var value, delta interface{}
 	err := row.Scan(&value, &delta)
 	if err != nil {
-		ctx.Value(constants.Logger).(*zap.Logger).Error("can't get metric from DBStorage",
+		dbs.log.Error("can't get metric from DBStorage",
 			zap.String("name", opts.MetricName),
 			zap.String("type", opts.MetricType),
 			zap.Error(err))
@@ -127,7 +129,7 @@ func (dbs *DBStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 	rows, err := dbs.conn.Query(ctx, `SELECT name, type, value, delta FROM metrics`)
 	if err != nil {
-		ctx.Value(constants.Logger).(*zap.Logger).Error("QueryContext error", zap.Error(err))
+		dbs.log.Error("QueryContext error", zap.Error(err))
 		return nil, fmt.Errorf("QueryContext error: %w", err)
 	}
 	defer rows.Close()
@@ -139,7 +141,7 @@ func (dbs *DBStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 			value, delta interface{}
 		)
 		if err := rows.Scan(&name, &t, &value, &delta); err != nil {
-			ctx.Value(constants.Logger).(*zap.Logger).Error("cant scan metric", zap.Error(err))
+			dbs.log.Error("cant scan metric", zap.Error(err))
 			continue
 		}
 
@@ -164,7 +166,7 @@ func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 			Update:     metric,
 		}
 		if err := dbs.Update(ctx, updateOpts); err != nil {
-			ctx.Value(constants.Logger).(*zap.Logger).Error("can't update DBStorage by",
+			dbs.log.Error("can't update DBStorage by",
 				zap.String("MetricName", key),
 				zap.String("MetricType", string(metric.Type)),
 				zap.Error(err))
@@ -177,7 +179,7 @@ func (dbs *DBStorage) SetAll(ctx context.Context, opts *SetAllOptions) error {
 
 func (dbs *DBStorage) Ping(ctx context.Context) error {
 	if err := dbs.conn.Ping(ctx); err != nil {
-		ctx.Value(constants.Logger).(*zap.Logger).Error("db ping error", zap.Error(err))
+		dbs.log.Error("db ping error", zap.Error(err))
 		return fmt.Errorf("db ping error %w", err)
 	}
 	return nil
@@ -191,7 +193,6 @@ func (dbs *DBStorage) Close() error {
 func newDB(ctx context.Context, dataSourceName string) (*pgxpool.Pool, error) {
 	conn, err := pgxpool.Connect(ctx, dataSourceName)
 	if err != nil {
-		ctx.Value(constants.Logger).(*zap.Logger).Error("can't open database", zap.Error(err))
 		return nil, fmt.Errorf("can't open database %w", err)
 	}
 	return conn, nil

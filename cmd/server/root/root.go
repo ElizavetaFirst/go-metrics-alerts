@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"go.uber.org/zap"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/saver"
@@ -56,10 +55,10 @@ var RootCmd = &cobra.Command{
 			}
 		}()
 
-		ctx := context.WithValue(context.Background(), constants.LoggerKey{}, log)
+		ctx := context.Background()
 
 		if databaseDSN != "" {
-			s, err = storage.NewPostgresStorage(ctx, databaseDSN)
+			s, err = storage.NewPostgresStorage(ctx, databaseDSN, log)
 
 			if err != nil {
 				return fmt.Errorf("failed to create the postgres storage %w", err)
@@ -70,8 +69,8 @@ var RootCmd = &cobra.Command{
 				}
 			}()
 		} else {
-			s = storage.NewMemStorage()
-			saver := saver.NewSaver(storeInterval, fileStoragePath, restore, s)
+			s = storage.NewMemStorage(log)
+			saver := saver.NewSaver(storeInterval, fileStoragePath, restore, s, log)
 			errChan := make(chan error)
 
 			go func() {

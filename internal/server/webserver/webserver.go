@@ -72,7 +72,7 @@ func (ws *Webserver) Run(addr string) error {
 }
 
 func setupRouter(storage storage.Storage, log *zap.Logger) *gin.Engine {
-	handler := handler.NewHandler(storage)
+	handler := handler.NewHandler(storage, log)
 
 	r := gin.Default()
 	r.Use(logger.InitLogger(log))

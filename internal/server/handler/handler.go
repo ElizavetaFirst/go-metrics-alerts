@@ -24,11 +24,13 @@ const (
 
 type Handler struct {
 	Storage storage.Storage
+	log     *zap.Logger
 }
 
-func NewHandler(s storage.Storage) *Handler {
+func NewHandler(s storage.Storage, log *zap.Logger) *Handler {
 	return &Handler{
 		Storage: s,
+		log:     log,
 	}
 }
 
@@ -126,7 +128,7 @@ func (h *Handler) handleNotAllowed(c *gin.Context) {
 func (h *Handler) handleJSONGetValue(c *gin.Context) {
 	var metrics metrics.Metrics
 	if err := c.ShouldBindJSON(&metrics); err != nil {
-		c.Request.Context().Value(constants.LoggerKey{}).(*zap.Logger).Error("ShouldBindJSON return error",
+		h.log.Error("ShouldBindJSON return error",
 			zap.Error(err))
 		c.Status(http.StatusBadRequest)
 		return
@@ -142,7 +144,7 @@ func (h *Handler) handleJSONGetValue(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		c.Request.Context().Value(constants.LoggerKey{}).(*zap.Logger).Error("Get metric return error",
+		h.log.Error("Get metric return error",
 			zap.Error(err))
 		c.Status(http.StatusInternalServerError)
 		return
@@ -171,7 +173,7 @@ func (h *Handler) handleUpdates(c *gin.Context) {
 	var metrics []metrics.Metrics
 
 	if err := c.BindJSON(&metrics); err != nil {
-		c.Request.Context().Value(constants.LoggerKey{}).(*zap.Logger).Error("BindJSON return error",
+		h.log.Error("BindJSON return error",
 			zap.Error(err))
 		c.Status(http.StatusBadRequest)
 		return
@@ -192,7 +194,7 @@ func (h *Handler) handleUpdates(c *gin.Context) {
 				if ok {
 					existingDelta, ok := existingMetric.Value.(*int64)
 					if !ok {
-						c.Request.Context().Value(constants.LoggerKey{}).(*zap.Logger).Error("all counter values must be int64")
+						h.log.Error("all counter values must be int64")
 						continue
 					}
 					newDelta := *existingDelta + *m.Delta
@@ -208,7 +210,7 @@ func (h *Handler) handleUpdates(c *gin.Context) {
 			}
 
 		default:
-			c.Request.Context().Value(constants.LoggerKey{}).(*zap.Logger).Error(
+			h.log.Error(
 				"metrics can be only counter or gauge type, but this metric has incorrect type",
 				zap.String("MetricType", m.MType))
 		}
@@ -218,7 +220,7 @@ func (h *Handler) handleUpdates(c *gin.Context) {
 	err := h.Storage.SetAll(c.Request.Context(), &setAllOpts)
 
 	if err != nil {
-		c.Request.Context().Value(constants.LoggerKey{}).(*zap.Logger).Error("SetAll return error",
+		h.log.Error("SetAll return error",
 			zap.Error(err))
 		c.Status(http.StatusInternalServerError)
 		return
@@ -240,7 +242,7 @@ func (h *Handler) handleGetValue(c *gin.Context) {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		c.Request.Context().Value(constants.LoggerKey{}).(*zap.Logger).Error("Get metric return error",
+		h.log.Error("Get metric return error",
 			zap.Error(err))
 		c.Status(http.StatusInternalServerError)
 		return
@@ -272,7 +274,7 @@ func (h *Handler) handleGetAllValues(c *gin.Context) {
 func (h *Handler) handlePing(c *gin.Context) {
 	err := h.Storage.Ping(c)
 	if err != nil {
-		c.Request.Context().Value(constants.LoggerKey{}).(*zap.Logger).Error("Ping return error",
+		h.log.Error("Ping return error",
 			zap.Error(err))
 		c.Status(http.StatusInternalServerError)
 		return

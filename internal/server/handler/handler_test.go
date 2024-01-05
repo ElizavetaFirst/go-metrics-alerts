@@ -10,6 +10,7 @@ import (
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func TestHandler_ServeHTTP(t *testing.T) {
@@ -59,7 +60,8 @@ func TestHandler_ServeHTTP(t *testing.T) {
 
 	ms := &storage.MemStorage{}
 
-	h := NewHandler(ms)
+	log, _ := zap.NewProduction()
+	h := NewHandler(ms, log)
 
 	r := gin.Default()
 	h.RegisterRoutes(r)

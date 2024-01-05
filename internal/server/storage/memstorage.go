@@ -12,11 +12,12 @@ import (
 )
 
 type MemStorage struct {
+	log  *zap.Logger
 	data sync.Map
 }
 
-func NewMemStorage() *MemStorage {
-	return &MemStorage{}
+func NewMemStorage(log *zap.Logger) *MemStorage {
+	return &MemStorage{log: log}
 }
 
 func (ms *MemStorage) Update(ctx context.Context, opts *UpdateOptions) error {
@@ -42,7 +43,7 @@ func (ms *MemStorage) Update(ctx context.Context, opts *UpdateOptions) error {
 				metric.Value = value + newValue
 			}
 		} else {
-			ctx.Value(constants.Logger).(*zap.Logger).Error("unexpected value type for counter metric",
+			ms.log.Error("unexpected value type for counter metric",
 				zap.String("uniqueID", uniqueID))
 			return errors.New("unexpected value type for counter metric")
 		}
@@ -60,7 +61,7 @@ func (ms *MemStorage) Get(ctx context.Context, opts *GetOptions) (Metric, error)
 	if exists {
 		return metric.(Metric), nil
 	}
-	ctx.Value(constants.Logger).(*zap.Logger).Error("can't get metric from MemStorage",
+	ms.log.Error("can't get metric from MemStorage",
 		zap.String("MetricName", metricName),
 		zap.String("MetricType", metricType))
 	return Metric{}, fmt.Errorf("can't get metric from MemStorage %s %s: %w", metricName, metricType, ErrMetricNotFound)
@@ -71,12 +72,12 @@ func (ms *MemStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 	ms.data.Range(func(key, value interface{}) bool {
 		keyStr, ok := key.(string)
 		if !ok {
-			ctx.Value(constants.Logger).(*zap.Logger).Warn("can't get key value")
+			ms.log.Warn("can't get key value")
 		}
 
 		valueMetric, ok := value.(Metric)
 		if !ok {
-			ctx.Value(constants.Logger).(*zap.Logger).Warn("can't get value")
+			ms.log.Warn("can't get value")
 		}
 
 		result[keyStr] = valueMetric
