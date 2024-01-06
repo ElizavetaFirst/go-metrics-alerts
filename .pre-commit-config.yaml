@@ -1,0 +1,8 @@
+repos:
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.40.1
+    hooks:
+      - id: golangci-lint
+        args: [--issues-exit-code=0] # измените этот код на 1, если хотите блокировать коммит при возникновении проблем
+        stages:
+          - commit # данная стадия обозначает, что хук будет выполняться при каждом коммите

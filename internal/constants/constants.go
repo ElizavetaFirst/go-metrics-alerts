@@ -5,4 +5,5 @@ const (
 	Counter   = "counter"
 	Gzip      = "gzip"
 	MaxErrors = 1000
+	Logger    = "logger"
 )

@@ -7,20 +7,20 @@ import (
 	"net/http"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
-	"github.com/pkg/errors"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 type ClientWithMiddleware struct {
-	HTTPClient *http.Client
+	HTTPClient *retryablehttp.Client
 }
 
-func (c *ClientWithMiddleware) Do(req *http.Request) (*http.Response, error) {
+func (c *ClientWithMiddleware) Do(req *retryablehttp.Request) (*http.Response, error) {
 	req.Header.Set(contentTypeStr, "application/json")
 	req.Header.Set("Accept-Encoding", constants.Gzip)
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't do client response")
+		return nil, fmt.Errorf("can't do client response %w", err)
 	}
 
 	var reader io.ReadCloser
@@ -28,7 +28,7 @@ func (c *ClientWithMiddleware) Do(req *http.Request) (*http.Response, error) {
 	case constants.Gzip:
 		_, err = gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't create gzip.NewReader")
+			return nil, fmt.Errorf("can't create gzip.NewReader %w", err)
 		}
 	default:
 		reader = resp.Body

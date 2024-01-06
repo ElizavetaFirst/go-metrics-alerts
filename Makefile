@@ -7,17 +7,17 @@ ITERS := $(addprefix iter,${NUMBERS})
 
 METRICSTEST_ARGS = -test.v -source-path=.
 
-.PHONY: build
+.PHONY:build
 build:
 	go build -C ./cmd/agent/ -o agent
 	go build -C ./cmd/server/ -o server
 
-.PHONY: clean
+.PHONY:clean
 clean:
 	-rm -f ./cmd/agent/agent
 	-rm -f ./cmd/server/server
 
-.PHONY: statictest
+.PHONY:statictest
 statictest:
 	go vet -vettool=$$(which statictest) ./...
 
@@ -70,8 +70,7 @@ ${ITERS}: iter%: build statictest;
 						-agent-binary-path=cmd/agent/agent \
 						-server-port=$$SERVER_PORT \
 						-database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
-						-key="$$TEMP_FILE" ; \
-			go test -v -race ./... ; \
+						-key="$$TEMP_FILE" && go test -v -race ./... ; \
 		fi ; \
 		if [ $$? -eq 1 ]; then \
 			break ; \
