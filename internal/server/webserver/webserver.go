@@ -3,6 +3,7 @@ package webserver
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -40,7 +41,10 @@ func NewWebserver(
 	}
 }
 
-func (ws *Webserver) Run(addr string) error {
+func (ws *Webserver) Run(addr string, wg *sync.WaitGroup) error {
+	wg.Add(1)
+	defer wg.Done()
+
 	var err error
 
 	operation := func() error {

@@ -6,8 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -57,19 +56,17 @@ func (s *Saver) getAndSaveMetrics(ctx context.Context) error {
 	return nil
 }
 
-func (s *Saver) Run(ctx context.Context) error {
+func (s *Saver) Run(ctx context.Context, wg *sync.WaitGroup) error {
+	wg.Add(1)
+	defer wg.Done()
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-c
+	defer func() {
 		if err := s.getAndSaveMetrics(ctx); err != nil {
 			s.log.Warn("can't save metrics on interrupt signal", zap.Error(err))
 		}
-		cancel()
 	}()
 
 	if s.restore {

@@ -3,7 +3,12 @@ package root
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -12,6 +17,8 @@ import (
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/webserver"
 	"github.com/spf13/cobra"
 )
+
+const timeoutShutdown = time.Second * 10
 
 var RootCmd = &cobra.Command{
 	Use:   "app",
@@ -43,7 +50,22 @@ var RootCmd = &cobra.Command{
 			return fmt.Errorf("can't get databaseDSN %w", err)
 		}
 
-		var s storage.Storage
+		ctx, cancelCtx := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer cancelCtx()
+
+		context.AfterFunc(ctx, func() {
+			ctx, cancelCtx := context.WithTimeout(context.Background(), timeoutShutdown)
+			defer cancelCtx()
+
+			<-ctx.Done()
+			log.Fatal("failed to gracefully shutdown the service")
+		})
+
+		wg := &sync.WaitGroup{}
+		defer func() {
+			wg.Wait()
+		}()
+
 		log, err := zap.NewProduction()
 		if err != nil {
 			fmt.Printf("can't initialize zap logger: %v", err)
@@ -55,8 +77,7 @@ var RootCmd = &cobra.Command{
 			}
 		}()
 
-		ctx := context.Background()
-
+		var s storage.Storage
 		if databaseDSN != "" {
 			s, err = storage.NewPostgresStorage(ctx, databaseDSN, log)
 
@@ -74,7 +95,7 @@ var RootCmd = &cobra.Command{
 			errChan := make(chan error)
 
 			go func() {
-				if err := saver.Run(ctx); err != nil {
+				if err := saver.Run(ctx, wg); err != nil {
 					errChan <- err
 				}
 				close(errChan)
@@ -86,6 +107,6 @@ var RootCmd = &cobra.Command{
 		}
 		server := webserver.NewWebserver(s, log)
 
-		return fmt.Errorf("error while server Run %w", server.Run(addr))
+		return fmt.Errorf("error while server Run %w", server.Run(addr, wg))
 	},
 }
