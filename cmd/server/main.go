@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/cmd/server/root"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/env"
@@ -28,6 +28,6 @@ func main() {
 		"db address")
 
 	if err := root.RootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 }
