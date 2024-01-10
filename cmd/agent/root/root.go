@@ -2,6 +2,7 @@ package root
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -16,7 +17,7 @@ var RootCmd = &cobra.Command{
 	Long:  "This is my agent application and it's has some long description",
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
-			fmt.Printf("Unknown flags: %s\n", args)
+			log.Printf("Unknown flags: %s\n", args)
 			return fmt.Errorf("unknown flags: %s", args)
 		}
 		return nil

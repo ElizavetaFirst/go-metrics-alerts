@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -55,7 +56,7 @@ func (u *Uploader) Run() {
 	for range ticker.C {
 		for {
 			if err := u.SendGaugeMetricsJSON(u.gaugeMetricsFunc()); err != nil {
-				fmt.Printf("SendGaugeMetricsJson return error %v", err)
+				log.Printf("SendGaugeMetricsJson return error %v", err)
 				errorCount++
 				if errorCount >= constants.MaxErrors {
 					u.errorChan <- err
@@ -64,7 +65,7 @@ func (u *Uploader) Run() {
 				continue
 			}
 			if err := u.SendCounterMetricsJSON(u.counterMetricsFunc()); err != nil {
-				fmt.Printf("SendCounterMetricsJson return error %v", err)
+				log.Printf("SendCounterMetricsJson return error %v", err)
 				errorCount++
 				if errorCount >= constants.MaxErrors {
 					u.errorChan <- err

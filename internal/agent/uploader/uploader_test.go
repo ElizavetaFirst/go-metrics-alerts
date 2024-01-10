@@ -2,8 +2,8 @@ package uploader
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -62,7 +62,7 @@ func TestUploader_SendGaugeMetrics(t *testing.T) {
 	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeMetrics, counterMetrics, errorChan)
 
 	if err := uploader.SendGaugeMetrics(gaugeMetrics()); err != nil {
-		fmt.Printf("SendGaugeMetrics return error %v", err)
+		log.Printf("SendGaugeMetrics return error %v", err)
 	}
 }
 
@@ -78,7 +78,7 @@ func TestUploader_SendCounterMetrics(t *testing.T) {
 	uploader := NewUploader("localhost:8080", 2*time.Second, gaugeMetrics, counterMetrics, errorChan)
 
 	if err := uploader.SendCounterMetrics(counterMetrics()); err != nil {
-		fmt.Printf("SendCounterMetrics return error %v", err)
+		log.Printf("SendCounterMetrics return error %v", err)
 	}
 }
 

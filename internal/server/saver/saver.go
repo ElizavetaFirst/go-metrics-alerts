@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -116,7 +117,7 @@ func saveMetricsToFile(metrics map[string]storage.Metric, filePath string) error
 	defer func() {
 		closeErr := file.Close()
 		if closeErr != nil {
-			fmt.Printf(failedCloseFile, closeErr)
+			log.Printf(failedCloseFile, closeErr)
 		}
 	}()
 
@@ -143,7 +144,7 @@ func loadMetricsFromFile(filePath string) (map[string]storage.Metric, error) {
 	defer func() {
 		closeErr := file.Close()
 		if closeErr != nil {
-			fmt.Printf(failedCloseFile, closeErr)
+			log.Printf(failedCloseFile, closeErr)
 		}
 	}()
 
