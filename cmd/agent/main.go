@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/cmd/agent/root"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/env"
@@ -25,6 +25,6 @@ func main() {
 		"the frequency of polling metrics from the runtime package")
 
 	if err := root.RootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 }

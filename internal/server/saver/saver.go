@@ -108,7 +108,6 @@ func (s *Saver) Run(ctx context.Context, wg *sync.WaitGroup) error {
 }
 
 func saveMetricsToFile(metrics map[string]storage.Metric, filePath string) error {
-	fmt.Println(metrics)
 	file, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)

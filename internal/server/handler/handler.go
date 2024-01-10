@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -90,7 +91,7 @@ func (h *Handler) handleUpdate(c *gin.Context) {
 	metricType = c.Param(metricTypeStr)
 	metricName = c.Param(metricNameStr)
 	metricValueParam := c.Param("metricValue")
-	fmt.Println(metricType, metricName, metricValueParam)
+	log.Println(metricType, metricName, metricValueParam)
 
 	var err error
 	switch metricType {

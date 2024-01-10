@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
@@ -32,7 +33,7 @@ func (c *ClientWithMiddleware) Do(req *retryablehttp.Request) (*http.Response, e
 		}
 	default:
 		reader = resp.Body
-		fmt.Println(reader)
+		log.Println(reader)
 	}
 
 	return resp, nil
