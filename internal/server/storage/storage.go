@@ -1,99 +1,47 @@
 package storage
 
 import (
-	"errors"
-	"fmt"
-	"sync"
+	"context"
 
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
+	"github.com/pkg/errors"
 )
-
-type MetricType string
 
 const (
 	Gauge   MetricType = constants.Gauge
 	Counter MetricType = constants.Counter
 )
 
+type (
+	MetricType string
+
+	UpdateOptions struct {
+		MetricName string
+		Update     Metric
+	}
+
+	GetOptions struct {
+		MetricName string
+		MetricType string
+	}
+
+	SetAllOptions struct {
+		Metrics map[string]Metric
+	}
+)
+
+var (
+	ErrDBNotInited    = errors.New("db is not inited")
+	ErrMetricNotFound = errors.New("metric not found")
+	ErrIncorrectType  = errors.New("incorrect metric type")
+	ErrCantConnectDB  = errors.New("can't connect to db")
+)
+
 type Storage interface {
-	Update(metricName string, update Metric) error
-	Get(metricName string, metricType string) (Metric, bool)
-	GetAll() map[string]Metric
-	SetAll(metrics map[string]Metric)
-}
-
-type memStorage struct {
-	Data sync.Map
-}
-
-func NewMemStorage() *memStorage {
-	return &memStorage{}
-}
-
-func (ms *memStorage) Update(metricName string, update Metric) error {
-	uniqueID := metricName + string(update.Type)
-	m, exists := ms.Data.Load(uniqueID)
-	if !exists {
-		ms.Data.Store(uniqueID, update)
-		return nil
-	}
-	metric, ok := m.(Metric)
-	if !ok {
-		return errors.New("can't get metric")
-	}
-
-	switch metric.Type {
-	case Gauge:
-		metric.Value = update.Value
-	case Counter:
-		if value, ok := metric.Value.(int64); ok {
-			if newValue, ok := update.Value.(int64); ok {
-				metric.Value = value + newValue
-			}
-		} else {
-			return errors.New("unexpected value type for counter metric")
-		}
-	}
-
-	ms.Data.Store(uniqueID, metric)
-	return nil
-}
-
-func (ms *memStorage) Get(metricName string, metricType string) (Metric, bool) {
-	uniqueID := metricName + metricType
-	metric, exists := ms.Data.Load(uniqueID)
-	if exists {
-		return metric.(Metric), exists
-	}
-	return Metric{}, exists
-}
-
-func (ms *memStorage) GetAll() map[string]Metric {
-	result := make(map[string]Metric)
-	ms.Data.Range(func(key, value interface{}) bool {
-		keyStr, ok := key.(string)
-		if !ok {
-			fmt.Printf("can't get key value")
-		}
-
-		valueMetric, ok := value.(Metric)
-		if !ok {
-			fmt.Printf("can't get value")
-		}
-
-		result[keyStr] = valueMetric
-		return true
-	})
-	return result
-}
-
-func (ms *memStorage) SetAll(metrics map[string]Metric) {
-	for key, metric := range metrics {
-		if metric.Type == "counter" && metric.Value != nil {
-			if value, ok := metric.Value.(float64); ok {
-				metric.Value = int64(value)
-			}
-		}
-		ms.Data.Store(key, metric)
-	}
+	Update(ctx context.Context, opts *UpdateOptions) error
+	Get(ctx context.Context, opts *GetOptions) (Metric, error)
+	GetAll(ctx context.Context) (map[string]Metric, error)
+	SetAll(ctx context.Context, opts *SetAllOptions) error
+	Ping(ctx context.Context) error
+	Close() error
 }

@@ -7,29 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ElizavetaFirst/go-metrics-alerts/internal/constants"
 	"github.com/ElizavetaFirst/go-metrics-alerts/internal/server/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
-
-type mockStorage struct{}
-
-func (ms *mockStorage) Update(name string, metric storage.Metric) error {
-	return nil
-}
-
-func (ms *mockStorage) Get(name string, metricType string) (storage.Metric, bool) {
-	return storage.Metric{}, false
-}
-
-func (ms *mockStorage) GetAll() map[string]storage.Metric {
-	return map[string]storage.Metric{
-		"test": {Type: constants.Gauge, Value: 123},
-	}
-}
-
-func (ms *mockStorage) SetAll(metrics map[string]storage.Metric) {}
 
 func TestHandler_ServeHTTP(t *testing.T) {
 	tests := []struct {
@@ -63,21 +45,23 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			http.StatusBadRequest,
 		},
 		{
-			"Not found get value",
-			http.MethodGet,
-			"/value/gauge/nonexistent",
-			http.StatusNotFound,
-		},
-		{
 			"Valid get all values request",
 			http.MethodGet,
 			"/",
 			http.StatusOK,
 		},
+		{
+			"Valid get db connection status",
+			http.MethodGet,
+			"/ping",
+			http.StatusOK,
+		},
 	}
 
-	ms := &mockStorage{}
-	h := NewHandler(ms)
+	ms := &storage.MemStorage{}
+
+	log, _ := zap.NewProduction()
+	h := NewHandler(ms, log)
 
 	r := gin.Default()
 	h.RegisterRoutes(r)

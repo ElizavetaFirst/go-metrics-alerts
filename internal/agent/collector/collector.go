@@ -1,7 +1,7 @@
 package collector
 
 import (
-	"fmt"
+	"log"
 	"math/rand"
 	"runtime"
 	"time"
@@ -33,7 +33,7 @@ func (c *Collector) Run() {
 	for {
 		select {
 		case <-c.errorChan:
-			fmt.Println("received error, stopping run")
+			log.Println("received error, stopping run")
 			return
 		default:
 			<-ticker.C
